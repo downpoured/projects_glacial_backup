@@ -1,8 +1,8 @@
 
 CC=gcc
-CFLAGS=-c  -Werror -std=c11 -Wno-unused-label -Wno-unused-function -D_GNU_SOURCE 
+CFLAGS=-c -Wall -Werror -std=c11 -Wno-unused-label -Wno-unused-function -Wconversion -D_GNU_SOURCE
 LDFLAGS=
-SOURCES=main.c sqlite3.c
+SOURCES=dbaccess.c lib_bstrlib.c lib_sphash.c lib_sqlite3.c main.c operations.c tests_sv.c tests_utils.c user_config.c util.c util_archiver.c util_audio_tags.c util_os.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=runbackup.out
 

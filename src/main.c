@@ -1,211 +1,179 @@
 /*
-This program is free software: you can redistribute it and/or modify
+GlacialBackup is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-This program is distributed in the hope that it will be useful,
+GlacialBackup is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "util.h"
-#include "util_os.h"
-#include "sphash.h"
-#include "sqlite3.h"
-#include "user_config.h"
-#include "dbaccess.h"
-#include "util_archiver.h"
-#include "operations.h"
-#include "tests.h"
+#include "main.h"
 
-bc_log g_log = {};
-
-void svdp_menumore()
+check_result ui_app_actions_tests(unusedapp(), unusedint())
 {
-	clearscreen();
-	int choice = ask_user_int("More... \n\n\n"
-		"1) View upload staging area\n"
-		"2) View logs\n"
-		"3) View archive info\n"
-		"4) View a file's history\n"
-		"5) (Testing: Database to text)\n"
-		"6) (Testing: Run tests)\n"
-		"7) Back to main menu\n", 1, 6);
-
-	switch (choice)
-	{
-	case 1:
-		svdp_viewlocation(false /*logs or staging*/);
-		break;
-	case 2:
-		svdp_viewlocation(true /*logs or staging*/);
-		break;
-	case 3:
-		svdp_runoperation(svdpeoperations_trim, true /*preview*/);
-		break;
-	case 4:
-		svdp_runoperation(svdpeoperations_filehistory, false /*preview*/);
-		break;
-	case 5:
-		svdp_runoperation(svdpeoperations_totxt, false /*preview*/);
-		break;
-	case 6:
-		runtests();
-		break;
-	default:
-		break;
-	}
+	sv_log_register_active_logger(NULL);
+	run_sv_tests();
+	alertdialog("Tests complete. GlacialBackup will now exit.");
+	exit(0);
 }
 
-void svdp_menumain()
+check_result ui_app_actions_viewlogs(svdp_application* app, unusedint())
 {
-	bool fcontinue = true;
-	while (fcontinue)
+	bstring logdir = bformat("%s%slogs", cstr(app->path_app_data), pathsep);
+	printf("Log files are saved to the directory %s.", cstr(logdir));
+	if (ask_user_yesno("Open this directory in UI?"))
 	{
-		clearscreen();
-		int choice = ask_user_int("welcome to glacial_backup. \n\n\n"
-			"1) Configure locations...\n"
-			"2) Preview backup\n"
-			"3) Run backup\n"
-			"4) Preview restore\n"
-			"5) Run restore\n"
-			"6) Trim obsolete versions...\n"
-			"7) More...\n"
-			"8) Exit\n", 1, 8);
-
-		switch (choice)
-		{
-		case 1:
-			svdp_configs_in_editor();
-			break;
-		case 2:
-			svdp_runoperation(svdpeoperations_backup, true /*preview*/);
-			break;
-		case 3:
-			svdp_runoperation(svdpeoperations_backup, false /*preview*/);
-			break;
-		case 4:
-			svdp_runoperation(svdpeoperations_restore, true /*preview*/);
-			break;
-		case 5:
-			svdp_runoperation(svdpeoperations_restore, false /*preview*/);
-			break;
-		case 6:
-			svdp_runoperation(svdpeoperations_trim, false /*preview*/);
-			break;
-		case 7:
-			svdp_menumore();
-			break;
-		case 8:
-			fcontinue = false;
-			break;
-		default:
-			fcontinue = false;
-			break;
-		}
+		os_open_dir_ui(cstr(logdir));
 	}
+	
+	bdestroy(logdir);
+	return OK;
 }
 
-static void printsupportedargs(bool sayunrecognized)
+check_result ui_app_actions_exit(unusedapp(), unusedint())
 {
-	if (sayunrecognized)
-		puts("Unrecognized parameter.\n");
-
-	puts("syntax is \nglacial_backup " cmdswitch "backup {groupname}[" cmdswitch "preview]\n\n");
+	exit(0);
 }
 
-static bool getargs(int argc, char *argv[], const char** groupname, bool* ispreview, enum svdpeoperations* op)
+check_result ui_app_menu_restorefromother(svdp_application* app, unusedint())
 {
-	if (argc < 3 || argc > 4)
-	{
-		return false;
-	}
-
-	if (argc >= 4 && s_equal(argv[3], cmdswitch "preview"))
-	{
-		*ispreview = true;
-	}
-	else
-	{
-		return false;
-	}
-
-	if (s_startswith(argv[2], "group"))
-	{
-		*groupname = argv[2];
-	}
-	else
-	{
-		return false;
-	}
-
-	if (s_equal(argv[1], cmdswitch "backup"))
-	{
-		*op = svdpeoperations_backup;
-	}
-	else
-	{
-		return false;
-	}
-
-	return true;
+	printf("Let's say you are restoring a group named 'example'."
+		"\n(There are many files with names like example_0001_0001.7z)"
+		"\nCreate a folder \n%s%sexample%sreadytoupload\n and place all files into it."
+		"\nThen start GlacialBackup and select Restore.\n", 
+		cstr(app->path_app_data), pathsep, pathsep);
+	alertdialog("");
+	return OK;
 }
 
-int svdpmain(int argc, char *argv[])
+check_result ui_app_menu_about(unusedapp(), unusedint())
 {
-	Result currenterr = {};
-	int retcode = 0;
-	check(svdp_check_other_instances());
-	check(svdp_startgloballogging(&g_log));
-	if (argc <= 1)
-	{
-		alertdialog("Starting interactive session, run with -h to see parameters.");
-		svdp_menumain();
-	}
-	else if (s_equal(argv[1], "-h") || s_equal(argv[1], "--help") || s_equal(argv[1], "/h")
-		|| s_equal(argv[1], "/?") || s_equal(argv[1], "-?"))
-	{
-		printsupportedargs(false);
-	}
-	else
-	{
-		g_log.suppress_dialogs = true;
-		bool ispreview = false;
-		const char* groupname = NULL;
-		enum svdpeoperations op = svdpeoperations_none;
-		if (!getargs(argc, argv, &groupname, &ispreview, &op))
-		{
-			printsupportedargs(false);
-			retcode = 1;
-		}
-		else
-		{
-			retcode = svdp_runoperation_groupname(op, ispreview, groupname);
-		}
-	}
+	alertdialog("Downpoured GlacialBackup, by Ben Fisher, 2016."
+		"\n\nGlacialBackup is free software : you can redistribute it and / or modify"
+		"\nit under the terms of the GNU General Public License as published by"
+		"\nthe Free Software Foundation, either version 3 of the License, or"
+		"\n(at your option) any later version.");
+	alertdialog("\n\nLibraries:"
+		"\nBstring, by Paul Hsieh"
+		"\n7Zip, by Igor Pavlov"
+		"\nSQLite, by SQLite team"
+		"\nFFmpeg, by FFmpeg team (disabled by default)"
+		"\nFnmatch implementation, from The GNU C Library"
+		"\nThe SpookyHash hashing implementation is"
+		"\nCopyright(c) 2014, Spooky Contributors"
+		"\nBob Jenkins, Andi Kleen, Ziga Zupanec, Arno Wagner"
+		"\nAll rights reserved."
+		"\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS"
+		"\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT"
+		"\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS"
+		"\nFOR A PARTICULAR PURPOSE ARE DISCLAIMED.IN NO EVENT SHALL THE"
+		"\nCOPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,"
+		"\nINDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES"
+		"\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR"
+		"\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)"
+		"\nHOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,"
+		"\nSTRICT LIABILITY, OR TORT(INCLUDING NEGLIGENCE OR OTHERWISE)"
+		"\nARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED"
+		"\nOF THE POSSIBILITY OF SUCH DAMAGE.\n");
 
-cleanup:
-	retcode |= currenterr.errortag;
-	bc_log_close(&g_log);
-	print_error_if_ocurred("", &currenterr);
-	g_log.suppress_dialogs = false;
-	return retcode;
+	return OK;
 }
 
-
-int main(int argc, char *argv[])
+check_result ui_app_menu_openwebsite(unusedapp(), unusedint())
 {
-	int retcode = 0;
-	runtests();
+	os_open_glacial_backup_website();
+	return OK;
+}
 
-#if 0
-	retcode = svdpmain(argc, argv);
-#endif
+check_result ui_app_menu_edit_group(svdp_application* app, unusedint())
+{
+	pickgroup(app);
+	if (app->current_group_name_index >= 0)
+	{
+		ui_numbered_menu_spec_entry entries[] = {
+			{ "Add/remove directories...", &ui_app_menu_edit_group_edit_dirs },
+			{ "Add/remove exclusion patterns...", &ui_app_menu_edit_group_edit_excl_patterns },
+			{ "Set how long to keep previous file versions...", &ui_app_edit_setting, svdp_setting_days_to_keep_prev_versions },
+			{ "Set encryption...", &ui_app_menu_edit_group_edit_encryption },
+			{ "Set approximate filesize for archive files...",  &ui_app_edit_setting, svdp_setting_approx_archive_size_bytes },
+			{ "Set strength of data compaction...",  &ui_app_edit_setting, svdp_setting_compact_threshold_bytes },
+			{ "Separate audio metadata changes...",  &ui_app_edit_setting, svdp_setting_separate_metadata_enabled },
+			{ "Back to main menu", NULL },
+			{ NULL, NULL } };
 
-	return retcode;
+		return ui_numbered_menu_show("Edit backup group...", entries, app, NULL);
+	}
+	return OK;
+}
+
+check_result ui_app_menu_more_actions(svdp_application* app, unusedint())
+{
+	ui_numbered_menu_spec_entry entries[] = {
+		{ "View information", &svdp_application_viewinfo },
+		{ "View logs", &ui_app_actions_viewlogs },
+		{ "Compact backup data to save disk space", &svdp_application_run, svdp_op_compact },
+		{ "Run tests", &ui_app_actions_tests },
+		{ "Run backups with low-privilege account...", &svdp_application_run_lowpriv },
+		{ "Back to main menu", NULL },
+		{ NULL, NULL } };
+
+	return ui_numbered_menu_show("More actions...", entries, app, NULL);
+}
+
+ui_numbered_menu_spec_entry entriesFull[] = {
+	{ "Run backup", &svdp_application_run, svdp_op_backup },
+	{ "Restore file(s)...", &svdp_application_run, svdp_op_restore},
+	{ "Restore file(s) from the past...", &svdp_application_run, svdp_op_restore_from_past },
+	{ "Restore from another computer...", &ui_app_menu_restorefromother },
+	{ "Create backup group...", &svdp_application_creategroup },
+	{ "Edit backup group...", &ui_app_menu_edit_group },
+	{ "More...", &ui_app_menu_more_actions },
+	{ "Exit", &ui_app_actions_exit },
+	{ NULL, NULL } };
+
+ui_numbered_menu_spec_entry entriesWithoutBackupGroup[] = {
+	{ "Create backup group...", &svdp_application_creategroup },
+	{ "Restore from another computer...", &ui_app_menu_restorefromother },
+	{ "Exit", &ui_app_actions_exit },
+	{ NULL, NULL } };
+
+const ui_numbered_menu_spec_entry* ui_app_menu_mainmenu_get(svdp_application* app)
+{
+	check_warn(svdp_application_findgroupnames(app), NULL, exit_on_err);
+	return app->backup_group_names->qty > 0 ?
+		entriesFull : entriesWithoutBackupGroup;
+}
+
+check_result ui_app_menu_mainmenu(svdp_application* app, unusedint())
+{
+	return ui_numbered_menu_show("Main menu.", ui_app_menu_mainmenu_get(app), app, &ui_app_menu_mainmenu_get);
+}
+
+check_result ui_app_menu_intro(svdp_application* app, unusedint())
+{
+	ui_numbered_menu_spec_entry entries[] = {
+		{ "Main menu", &ui_app_menu_mainmenu },
+		{ "About GlacialBackup Software", &ui_app_menu_about },
+		{ "Open GlacialBackup website", &ui_app_menu_openwebsite },
+		{ "Exit", NULL },
+		{ NULL, NULL } };
+
+	return ui_numbered_menu_show("Welcome to GlacialBackup.", entries, app, NULL);
+}
+
+int mainsig
+{
+	svdp_application app = {};
+	os_init();
+	run_sv_tests();
+	bool is_low_access = false;
+	bstring dir_from_args = parse_cmd_line_args(argc, argv, &is_low_access);
+	check_warn(svdp_application_load(&app, cstr(dir_from_args), is_low_access), NULL, exit_on_err);
+	check_warn(ui_app_menu_intro(&app, svdp_op_none), NULL, exit_on_err);
+	svdp_application_close(&app);
+	bdestroy(dir_from_args);
+	return 0;
 }

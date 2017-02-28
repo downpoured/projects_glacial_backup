@@ -1,0 +1,1 @@
+To enable ffmpeg features on Windows, please place ffmpeg.exe in this directory.
