@@ -593,11 +593,27 @@ void SpookyHash::Final(Uint64 *hash1, Uint64 *hash2, Uint64 *hash3, Uint64 *hash
 	*hash4 = h3;
 }
 
-inline void GetHashOfFile256(FILE* wzFile, Uint64* h1, Uint64* h2, Uint64* h3, Uint64* h4)
+
+inline void GetHashOfFile128(const char* szFilename, Uint64* h1, Uint64* h2, Uint32 hashSeed1, Uint32 hashSeed2)
 {
-	*h1 = 1;
-	*h2 = 1;
+	FILE* f = fopenwrapper(szFilename, "rb");
+	const int bufsize = 64*1024;
+	byte* buffer = (byte*)malloc(bufsize);
+	size_t nRead = 0;
+	SpookyHash hash;
+	hash.Init(hashSeed1, hashSeed2);
+	while ((nRead = fread(&buffer[0], 1, bufsize, f)) != 0)
+	{
+		hash.Update(buffer, nRead);
+	}
+	fclose(f);
+	free(buffer);
+	UINT64 hashes[4];
+	hash.Final(&hashes[0], &hashes[1], &hashes[2], &hashes[3]);
+	*h1 = hashes[0];
+	*h2 = hashes[1];
 }
+
 
 
 
