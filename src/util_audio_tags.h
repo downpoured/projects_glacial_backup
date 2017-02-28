@@ -16,32 +16,37 @@ GNU General Public License for more details.
 #include "util_archiver.h"
 
 typedef struct sv_hasher {
-	byte* buf;
+	byte *buf;
 	uint32_t buflen32u;
 	int32_t buflen32s;
 	spooky_state state;
-	const char* loggingcontext;
+	const char *loggingcontext;
 } sv_hasher;
 
-check_result checkexternaltoolspresent(svdp_archiver* archiver, uint32_t separatemetadata);
+check_result checkexternaltoolspresent(svdp_archiver *archiver, uint32_t separatemetadata);
+bool readhash(const bstring getoutput, hash256 *out_hash);
 
 typedef enum knownfileextension
 {
-	knownfileextensionNone = 0,
-	knownfileextensionOgg,
-	knownfileextensionMp3,
-	knownfileextensionM4a,
-	knownfileextensionFlac,
-	knownfileextensionOtherBinary,
+	knownfileextension_none = 0,
+	knownfileextension_ogg,
+	knownfileextension_mp3,
+	knownfileextension_mp4,
+	knownfileextension_m4a,
+	knownfileextension_flac,
+	knownfileextension_otherbinary,
 } knownfileextension;
 
-knownfileextension get_file_extension_info(const char* filename, uint32_t len);
-void adjustfilesize_if_audio_file(uint32_t separatemetadata, 
-	knownfileextension ext, uint64_t size_from_disk, uint64_t* outputsize);
-check_result hash_of_file(os_exclusivefilehandle* handle, 
-	uint32_t separateaudio, knownfileextension ext, const char* metadatabinary, hash256* out_hash, uint32_t* outcrc32);
-check_result checkffmpegworksasexpected(svdp_archiver* archiver, 
-	uint32_t separatemetadata, const char* tmpdir);
-check_result writevalidmp3(const char* path, bool changeid3, bool changeid3length, bool changedata);
+extern uint64_t SvdpHashSeed1;
+extern uint64_t SvdpHashSeed2;
+check_result get_file_checksum_string(const char *filepath, bstring s);
+check_result writevalidmp3(const char *path, bool changeid3, bool changeid3length, bool changedata);
+knownfileextension get_file_extension_info(const char *filename, int len);
+void adjustfilesize_if_audio_file(uint32_t separatemetadata, knownfileextension ext, 
+	uint64_t size_from_disk, uint64_t *outputsize);
+check_result hash_of_file(os_exclusivefilehandle *handle, uint32_t separateaudio, 
+	knownfileextension ext, const char *metadatabinary, hash256 *out_hash, uint32_t *outcrc32);
+check_result checkffmpegworksasexpected(svdp_archiver *archiver, 
+	uint32_t separatemetadata, const char *tmpdir);
 
 #endif

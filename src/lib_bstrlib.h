@@ -194,11 +194,11 @@ int bstrtmp_r = BSTR_ERR, bstrtmp_sz = 16; \
 		int(*cb) (void * parm, int ofs, const_bstring entry), void * parm);
 	extern int bseof(const struct bStream * s);
 
-	struct tagbstring {
+	typedef struct tagbstring {
 		int mlen;
 		int slen;
 		unsigned char * data;
-	};
+	} tagbstring;
 
 	/* Accessor macros */
 #define blengthe(b, e)      (((b) == (void *)0 || (b)->slen < 0) ? (int)(e) : ((b)->slen))
@@ -435,6 +435,18 @@ bstring bstr__tmp = (b);                                                \
 	};
 
 	int bscb(void * parm, int ofs, int len);
+
+#define bstrlist bstrList
+#define bstrlist_open bstrListCreate
+#define bstrlist_close bstrListDestroy 
+#define bstrlist_alloc bstrListAlloc 
+#define bstr_fill bFill
+#define bstr_catstatic bcatStatic
+#define bstr_fromstatic bfromStatic
+#define bstr_assignstatic bassignStatic
+#define bjoin_static bjoinStatic
+#define bstr_static bsStatic
+
 #ifdef __cplusplus
 }
 #endif

@@ -48,7 +48,7 @@ GNU General Public License for more details.
 #define nativenewline "\n"
 #define ignore_unused_result(x) do {int ignored __attribute__((unused)) = x;} while(0)
 #define CONSTRUCT(structname) (structname)
-#define DEBUGBREAK() raise(SIGTRAP)
+#define DEBUGBREAK() do { if (ask_user_yesno("Break?")) raise(SIGTRAP); } while(0)
 #define IO_PREFIX(iofn) iofn
 #define __FUNCTION__ __func__
 
@@ -67,14 +67,15 @@ GNU General Public License for more details.
 #define snprintf _snprintf
 #define ignore_unused_result(x) (void)x
 #define CONSTRUCT(structname) 
-#define DEBUGBREAK() DebugBreak()
+#define DEBUGBREAK() do { if (IsDebuggerPresent()) DebugBreak(); } while(0)
 #define PATH_MAX MAX_PATH
 #pragma warning(disable:4996)
 #endif
 
 /* sv_array */
+typedef unsigned char byte;
 typedef struct sv_array {
-	uint8_t* buffer;
+	byte *buffer;
 	uint32_t elementsize;
 	uint32_t capacity; /* in terms of elementsize*/
 	uint32_t length; /* in terms of elementsize*/
@@ -82,17 +83,17 @@ typedef struct sv_array {
 
 typedef uint8_t byte;
 sv_array sv_array_open(uint32_t elementsize, uint32_t initialcapacity);
-void sv_array_reserve(sv_array* self, uint32_t requestedcapacity);
-void sv_array_append(sv_array* self, const void* inbuffer, uint32_t incount);
-void sv_array_appendzeros(sv_array* self, uint32_t incount);
-void sv_array_truncatelength(sv_array* self, uint32_t newlength);
-void sv_array_clear(sv_array* self);
-byte* sv_array_at(sv_array* self, uint32_t index);
-const byte* sv_array_atconst(const sv_array* self, uint32_t index);
-uint64_t sv_array_at64u(const sv_array* self, uint32_t index);
-void sv_array_add64u(sv_array* self, uint64_t n);
-uint32_t sv_array_64ulowerbound(sv_array* self, uint64_t n);
-void sv_array_close(sv_array* self);
+void sv_array_reserve(sv_array *self, uint32_t requestedcapacity);
+void sv_array_append(sv_array *self, const void *inbuffer, uint32_t incount);
+void sv_array_appendzeros(sv_array *self, uint32_t incount);
+void sv_array_truncatelength(sv_array *self, uint32_t newlength);
+void sv_array_clear(sv_array *self);
+byte *sv_array_at(sv_array *self, uint32_t index);
+const byte *sv_array_atconst(const sv_array *self, uint32_t index);
+uint64_t sv_array_at64u(const sv_array *self, uint32_t index);
+void sv_array_add64u(sv_array *self, uint64_t n);
+uint32_t sv_array_64ulowerbound(sv_array *self, uint64_t n);
+void sv_array_close(sv_array *self);
 
 /* sv_2d_array */
 typedef struct sv_2d_array {
@@ -100,10 +101,10 @@ typedef struct sv_2d_array {
 	uint32_t elementsize;
 } sv_2d_array;
 sv_2d_array sv_2d_array_open(uint32_t elementsize);
-void sv_2d_array_ensure_space(sv_2d_array* self, uint32_t d1, uint32_t d2);
-const byte* sv_2d_array_atconst(const sv_2d_array* self, uint32_t d1, uint32_t d2);
-byte* sv_2d_array_at(sv_2d_array* self, uint32_t d1, uint32_t d2);
-void sv_2d_array_close(sv_2d_array* self);
+void sv_2d_array_ensure_space(sv_2d_array *self, uint32_t d1, uint32_t d2);
+const byte *sv_2d_array_atconst(const sv_2d_array *self, uint32_t d1, uint32_t d2);
+byte *sv_2d_array_at(sv_2d_array *self, uint32_t d1, uint32_t d2);
+void sv_2d_array_close(sv_2d_array *self);
 
 /* sv_pseudosplit */
 typedef struct sv_pseudosplit {
@@ -113,12 +114,12 @@ typedef struct sv_pseudosplit {
 } sv_pseudosplit;
 
 /* like splitting a string, but faster */
-sv_pseudosplit sv_pseudosplit_open(const char* s);
-void sv_pseudosplit_split(sv_pseudosplit* self, char delim);
-const char* sv_pseudosplit_viewat(sv_pseudosplit* self, uint32_t linenumber);
-void sv_pseudosplit_at(sv_pseudosplit* self, uint32_t linenumber, bstring s);
-uint32_t sv_pseudosplit_pos_to_linenumber(sv_pseudosplit* self, uint64_t offset);
-void sv_pseudosplit_close(sv_pseudosplit* self);
+sv_pseudosplit sv_pseudosplit_open(const char *s);
+void sv_pseudosplit_split(sv_pseudosplit *self, char delim);
+const char *sv_pseudosplit_viewat(sv_pseudosplit *self, uint32_t linenumber);
+void sv_pseudosplit_at(sv_pseudosplit *self, uint32_t linenumber, bstring s);
+uint32_t sv_pseudosplit_pos_to_linenumber(sv_pseudosplit *self, uint64_t offset);
+void sv_pseudosplit_close(sv_pseudosplit *self);
 
 /* sv_result */
 typedef struct sv_result {
@@ -127,20 +128,23 @@ typedef struct sv_result {
 } sv_result;
 
 extern sv_result OK;
-void sv_result_close(sv_result* self);
+void sv_result_close(sv_result *self);
 
 /* enforce checking return type */
 #define TOKENPASTE(x, y) x ## y
 #define TOKENPASTE2(x, y) TOKENPASTE(x, y)
 #if defined(__GNUC__) && (__GNUC__ >= 4)
 #define CHECKRETURN __attribute__ ((warn_unused_result))
-#define UNUSEDPARAM  TOKENPASTE2(UNUSEDp, __COUNTER__)  __attribute__((unused))
+#define unused(type) __attribute__((__unused__)) type TOKENPASTE2(unusedparam, __COUNTER__)
+#define unused_ptr(type) __attribute__((__unused__)) type * TOKENPASTE2(unusedparam, __COUNTER__)
 #elif defined(_MSC_VER) && (_MSC_VER >= 1700)
 #define CHECKRETURN _Check_return_
-#define UNUSEDPARAM  TOKENPASTE2(UNUSEDp, __COUNTER__) 
+#define unused(type) type
+#define unused_ptr(type) type *
 #else
 #define CHECKRETURN
-#define UNUSEDPARAM  TOKENPASTE2(UNUSEDp, __COUNTER__) 
+#define unused(type) type
+#define unused_ptr(type) type *
 #endif
 #define check_result CHECKRETURN sv_result
 
@@ -156,7 +160,6 @@ uint32_t checkedmul32(uint32_t a, uint32_t b);
 uint32_t checkedadd32(uint32_t a, uint32_t b);
 int32_t checkedadd32s(int32_t a, int32_t b);
 uint32_t round_up_to_multiple(uint32_t a, uint32_t mod);
-uint32_t round_down_to_multiple(uint32_t a, uint32_t mod);
 uint32_t nearest_power_of_two32(uint32_t a);
 uint64_t make_uint64(uint32_t hi, uint32_t lo);
 uint32_t upper32(uint64_t n);
@@ -177,100 +180,84 @@ unsigned long long castull(uint64_t n);
 #define wcslen32s(x) cast_size_t_32s(wcslen(x))
 
 /* allocation */
-byte* sv_realloc(byte* ptr, uint32_t a, uint32_t b);
-byte* sv_calloc(uint32_t a, uint32_t b);
+byte *sv_realloc(byte *ptr, uint32_t a, uint32_t b);
+byte *sv_calloc(uint32_t a, uint32_t b);
 #define sv_freenull(p) do { free(p); (p) = NULL; } while(0)
 
 /* string utils */
-bool s_equal(const char* s1, const char* s2);
-bool s_startswithlen(const char* s1, int len1, const char* s2, int len2);
-bool s_startswith(const char* s1, const char* s2);
-bool s_endswithlen(const char* s1, int len1, const char* s2, int len2);
-bool s_endswith(const char* s1, const char*s2);
-bool s_contains(const char* s1, const char* s2);
-bool s_isalphanum_paren_or_underscore(const char* s);
-bool uintfromstring(const char* s, uint64_t* result);
-bool uintfromstringhex(const char* s, uint64_t* result);
-bool fnmatch_simple(const char* pattern, const char* string);
-void fnmatch_checkvalid(const char* pattern, bstring response);
+bool s_equal(const char *s1, const char *s2);
+bool s_startswithlen(const char *s1, int len1, const char *s2, int len2);
+bool s_startswith(const char *s1, const char *s2);
+bool s_endswithlen(const char *s1, int len1, const char *s2, int len2);
+bool s_endswith(const char *s1, const char *s2);
+bool s_contains(const char *s1, const char *s2);
+bool s_isalphanum_paren_or_underscore(const char *s);
+bool ws_equal(const wchar_t *s1, const wchar_t *s2);
+bool uintfromstring(const char *s, uint64_t *result);
+bool uintfromstringhex(const char *s, uint64_t *result);
+bool fnmatch_simple(const char *pattern, const char *string);
+void fnmatch_checkvalid(const char *pattern, bstring response);
 
-/* additions to bstring */
-inline bstring bstring_open(void) {
-	return bfromStatic("");
+inline bstring bstring_open(void)
+{
+	return bstr_fromstatic("");
 }
-inline void bstrClear(bstring s) {
-	bassignblk(s, " ", 0);
+
+inline void bstrclear(bstring s)
+{
+	bassignblk(s, "", 0);
 }
 
 #define WARN_NUL_IN_STR 0
-#if WARN_NUL_IN_STR
-#define cstr(s) bstrWarnNullToCstr(s)
-#define wcstr(s) wcstrWarnNullToCstr(&(s))
+#if WARN_NUL_IN_STR || defined(_DEBUG)
+#define cstr(s) bstr_warnnull_cstr(s)
+#define wcstr(s) wcstr_warnnull_cstr(&(s))
 #else
-#define cstr(s) ((const char*)(s)->data)
-#define wcstr(s) ((const wchar_t*)sv_array_atconst(&(s).arr, 0))
+#define cstr(s) ((const char *)(s)->data)
+#define wcstr(s) ((const wchar_t *)sv_array_atconst(&(s).arr, 0))
 #endif
-#define wpcstr(s) ((const wchar_t*)sv_array_atconst(&(s)->arr, 0))
+#define wpcstr(s) ((const wchar_t *)sv_array_atconst(&(s)->arr, 0))
 #define checkstr(expression) check_b(BSTR_OK == (expression), "string op failed")
-#define bassignformat(param, ...) do { bstrClear(param); bformata(param, __VA_ARGS__); } while(0)
-const char* bstrWarnNullToCstr(const bstring s);
-const char* bstrListViewAt(const bstrList* list, int index);
-bstrList* bstrListCopy(const bstrList* list);
-void bstrListSplit(bstrList* list, const bstring bstr, const bstring bdelim);
-void bstrListSplitCstr(bstrList* list, const char* s, const char* delim);
-void bstrListClear(bstrList* list);
-void bstrListSort(bstrList* list);
-int bstrListAppend(bstrList* list, const bstring bs);
-int bstrListAppendCstr(bstrList* list, const char* s);
-int bstrListAppendList(bstrList* list, const bstrList* otherlist);
-int bstrListRemoveAt(bstrList* list, int index);
-int bstringAllocZeros(bstring s, int len);
-void bstringFindAll(bstring haystack, const char* needle, sv_array* arr);
-void bytes_to_string(const void* b, uint32_t len, bstring s);
+#define bassignformat(param, ...) do { bstrclear(param); bformata(param, __VA_ARGS__); } while(0)
+const char *bstr_warnnull_cstr(const bstring s);
+const char *bstrlist_view(const bstrlist *list, int index);
+bstrlist *bstrlist_copy(const bstrlist *list);
+void bstrlist_split(bstrlist *list, const bstring bstr, const bstring bdelim);
+void bstrlist_splitcstr(bstrlist *list, const char *s, const char *delim);
+void bstrlist_clear(bstrlist *list);
+void bstrlist_sort(bstrlist *list);
+int bstrlist_append(bstrlist *list, const bstring bs);
+int bstrlist_appendcstr(bstrlist *list, const char *s);
+int bstrlist_concat(bstrlist *list, const bstrlist *otherlist);
+int bstrlist_remove_at(bstrlist *list, int index);
+int bstring_alloczeros(bstring s, int len);
+void bytes_to_string(const void *b, uint32_t len, bstring s);
+int bstr_replaceall(bstring s, const char *find, const char *replacewith);
+bool bstr_equal(const bstring s1, const bstring s2);
 
 #define chars_to_uint32(c1, c2, c3, c4) \
-		(((uint32_t)(c1)) << 24) | (((uint32_t)(c2)) << 16) | \
-		(((uint32_t)(c3)) << 8) | ((uint32_t)(c4))
+		(((uint32_t)(c1)) << 24) | (((uint32_t)(c2)) << 16) | /* allow cast */ \
+		(((uint32_t)(c3)) << 8) | ((uint32_t)(c4)) /* allow cast */
 
 /* sv_wstr */
 typedef struct sv_wstr {
 	sv_array arr;
 } sv_wstr;
 
-sv_wstr sv_wstr_open(uint32_t initialLength);
-const wchar_t* wcstrWarnNullToCstr(const sv_wstr* s);
-void sv_wstr_close(sv_wstr* self);
-void sv_wstrAllocZeros(sv_wstr* self, uint32_t len);
-void sv_wstrTruncateLength(sv_wstr* self, uint32_t expectedLen);
-void sv_wstrAppend(sv_wstr* self, const wchar_t* s);
-void sv_wstrClear(sv_wstr* self);
-void sv_wstrListClear(sv_array* list);
-
-/* We need to make an array of const char*
-the simplest approach is to malloc() a lot of strings into an array,
-but this causes n memory allocations.
-so let's instead allocate one large area of memory,
-and have several pointers into offsets into this area of memory.
-For the area of memory I'll use a bstring with embedded nul bytes.
-Two phases, because the buffer could get realloc'd to a different location.
-*/
-typedef struct char_ptr_array_builder {
-	bstring buffer;
-	sv_array char_ptrs;
-	sv_array offsets;
-} char_ptr_array_builder;
-
-char_ptr_array_builder char_ptr_array_builder_open(uint32_t estimatedsize);
-void char_ptr_array_builder_add(char_ptr_array_builder* self, const char* s, int len);
-void char_ptr_array_builder_finalize(char_ptr_array_builder* self);
-void char_ptr_array_builder_close(char_ptr_array_builder* self);
-void char_ptr_array_builder_reset(char_ptr_array_builder* self);
+sv_wstr sv_wstr_open(uint32_t initial_length);
+const wchar_t *wcstr_warnnull_cstr(const sv_wstr *s);
+void sv_wstr_close(sv_wstr *self);
+void sv_wstr_alloczeros(sv_wstr *self, uint32_t len);
+void sv_wstr_truncate(sv_wstr *self, uint32_t expected_len);
+void sv_wstr_append(sv_wstr *self, const wchar_t *s);
+void sv_wstr_clear(sv_wstr *self);
+void sv_wstrlist_clear(sv_array *list);
 
 /* ui */
-void ask_user_prompt(const char* prompt, bool allow_empty, bstring out);
-bool ask_user_yesno(const char* prompt);
-uint32_t ask_user_int(const char* prompt, int valmin, int valmax);
-void alertdialog(const char* message);
+void ask_user_prompt(const char *prompt, bool q_to_cancel, bstring out);
+bool ask_user_yesno(const char *prompt);
+uint32_t ask_user_int(const char *prompt, int valmin, int valmax);
+void alertdialog(const char *message);
 
 /* ui menus */
 typedef enum
@@ -280,26 +267,23 @@ typedef enum
 } erespondtoerr;
 
 struct svdp_application;
-typedef sv_result(*FnMenuCallback)(struct svdp_application*, int);
+typedef sv_result(*FnMenuCallback)(struct svdp_application *, int);
 typedef struct ui_numbered_menu_spec_entry {
-	const char* message;
+	const char *message;
 	FnMenuCallback callback;
 	int arg;
 } ui_numbered_menu_spec_entry;
 
-typedef const struct ui_numbered_menu_spec_entry*(*FnMenuGetNextMenu) (struct svdp_application*);
-
-check_result ui_numbered_menu_show(const char* msg, const ui_numbered_menu_spec_entry* entries, 
-	struct svdp_application* app, FnMenuGetNextMenu getnextmenu);
-
-int ui_numbered_menu_pick_from_list(const char* msg, const bstrList* list, const char* formatEach, 
-	const char* additionalOpt1, const char* additionalOpt2);
-
-int ui_numbered_menu_pick_from_long_list(const bstrList* list, int groupsize);
+typedef const struct ui_numbered_menu_spec_entry *(*FnMenuGetNextMenu) (struct svdp_application *);
+int ui_numbered_menu_pick_from_long_list(const bstrlist *list, int groupsize);
+check_result ui_numbered_menu_show(const char *msg, const ui_numbered_menu_spec_entry *entries,
+	struct svdp_application *app, FnMenuGetNextMenu getnextmenu);
+int ui_numbered_menu_pick_from_list(const char *msg, const bstrlist *list,
+	const char *format_each, const char *additionalopt1, const char *additionalopt2);
 
 /* sv_file */
 typedef struct sv_file {
-	FILE* file;
+	FILE *file;
 } sv_file;
 
 /* sv_log */
@@ -312,24 +296,28 @@ typedef struct sv_log {
 	int64_t start_of_day;
 } sv_log;
 
-check_result sv_log_open(sv_log* self, const char* dir);
-void sv_log_register_active_logger(sv_log* logger);
-void sv_log_close(sv_log* self);
-void sv_log_writeFmt(const char* fmt, ...);
-void sv_log_writeLine(const char* s);
-void sv_log_writeLines(const char* s1, const char* s2);
+check_result sv_log_open(sv_log *self, const char *dir);
+void sv_log_register_active_logger(sv_log *logger);
+void sv_log_close(sv_log *self);
+void sv_log_writefmt(const char *fmt, ...);
+void sv_log_writeline(const char *s);
+void sv_log_writelines(const char *s1, const char *s2);
 void sv_log_flush(void);
-void sv_log_addNewLineTime(FILE* f, int64_t start_of_day, int64_t seconds, long milliseconds);
-void appendNumberToFilename(const char* dir, const char* prefix, const char* suffix, uint32_t number, bstring out);
-uint32_t readNumberFromFilename(bstring tmp, const char* prefix, const char* suffix, const char* candidate);
-check_result readLatestNumberFromFilename(const char* dir, const char* prefix, const char* suffix, uint32_t* latestnumber);
+void sv_log_addnewlinetime(FILE *f, int64_t start_of_day, int64_t seconds, long milliseconds);
+void appendnumbertofilename(const char *dir,
+	const char *prefix, const char *suffix, uint32_t number, bstring out);
+uint32_t readnumberfromfilename(bstring tmp,
+	const char *prefix, const char *suffix, const char *candidate);
+check_result readlatestnumberfromfilename(const char *dir,
+	const char *prefix, const char *suffix, uint32_t *latestnumber);
 
 /* error handling */
 void check_b_hit(void);
 void debugbreak(void);
 void die(void);
 void set_debugbreaks_enabled(bool b);
-void check_warn_impl(sv_result res, const char* msg, const char* fnname, erespondtoerr respondtoerr);
+void check_warn_impl(sv_result res,
+	const char *msg, const char *fnname, erespondtoerr respondtoerr);
 
 #ifdef _DEBUG
 #define debugonly(x) x
@@ -342,15 +330,15 @@ void check_warn_impl(sv_result res, const char* msg, const char* fnname, erespon
 #define check(expression) do { \
 	currenterr = (expression); \
 	if (currenterr.code) { \
-		sv_log_writeFmt("leaving scope, %s", (#expression)); \
+		sv_log_writefmt("leaving scope, %s", (#expression)); \
 		sv_log_flush(); \
 		goto cleanup; \
 	} } while(0)
 
 #define check_b(cond, ...) do { \
 	if (!(cond)) { \
-		sv_log_writeFmt(__VA_ARGS__); \
-		sv_log_writeFmt("leaving scope, %s fn %s line %d", \
+		sv_log_writefmt(__VA_ARGS__); \
+		sv_log_writefmt("leaving scope, %s fn %s line %d", \
 			(#cond), __FUNCTION__, __LINE__); \
 		check_b_hit(); \
 		currenterr.msg = bformat(__VA_ARGS__); \
@@ -361,8 +349,8 @@ void check_warn_impl(sv_result res, const char* msg, const char* fnname, erespon
 
 #define check_fatal(cond, ...) do { \
 	if (!(cond)) { \
-		sv_log_writeFmt(__VA_ARGS__); \
-		sv_log_writeFmt("exiting, %s fn %s line %d", \
+		sv_log_writefmt(__VA_ARGS__); \
+		sv_log_writefmt("exiting, %s fn %s line %d", \
 			(#cond), __FUNCTION__, __LINE__); \
 		fprintf(stderr, __VA_ARGS__); \
 		die(); \
@@ -381,8 +369,8 @@ void check_warn_impl(sv_result res, const char* msg, const char* fnname, erespon
 
 #define log_b(cond, ...) do { \
 	if (!(cond)) { \
-		sv_log_writeFmt("'%s', '%s'", (#cond), __FUNCTION__); \
-		sv_log_writeFmt(__VA_ARGS__); \
+		sv_log_writefmt("'%s', '%s'", (#cond), __FUNCTION__); \
+		sv_log_writefmt(__VA_ARGS__); \
 		debugonly(if (0) { printf(__VA_ARGS__); }) \
 	} } while(0)
 
@@ -390,15 +378,17 @@ void check_warn_impl(sv_result res, const char* msg, const char* fnname, erespon
 	errno = 0; \
 	int TOKENPASTE2(log_errnoval, __LINE__) = (expression); \
 	vardatatypeandname = TOKENPASTE2(log_errnoval, __LINE__); \
-	const char* TOKENPASTE2(log_errnocontext , __LINE__)[4] = {__VA_ARGS__}; \
+	const char *TOKENPASTE2(log_errnocontext , __LINE__)[4] = {__VA_ARGS__}; \
 	do { if ((TOKENPASTE2(log_errnoval, __LINE__)) < 0) { \
-		log_errno_impl(#expression, errno, TOKENPASTE2(log_errnocontext, __LINE__), __FUNCTION__, __LINE__); \
+		log_errno_impl( \
+			#expression, errno, TOKENPASTE2(log_errnocontext, __LINE__), __FUNCTION__, __LINE__); \
 	} } while (0)
 
 #define check_errno(vardatatypeandname, expression, ...) \
 	log_errno(vardatatypeandname, expression, __VA_ARGS__); \
 	do { if ((TOKENPASTE2(log_errnoval, __LINE__)) < 0) { \
-		check_errno_impl(&currenterr, #expression, errno, TOKENPASTE2(log_errnocontext, __LINE__), __FUNCTION__); \
+		check_errno_impl( \
+			&currenterr, #expression, errno, TOKENPASTE2(log_errnocontext, __LINE__), __FUNCTION__); \
 		goto cleanup; \
 	} } while (0)
 
@@ -406,31 +396,21 @@ void check_warn_impl(sv_result res, const char* msg, const char* fnname, erespon
 	SetLastError(0); \
 	auto TOKENPASTE2(log_errwin32val, __LINE__) = (expression); \
 	vardatatypeandname = TOKENPASTE2(log_errwin32val, __LINE__); \
-	const char* TOKENPASTE2(log_errwin32context, __LINE__)[4] = {__VA_ARGS__}; \
+	DWORD TOKENPASTE2(log_errwin32lasterr, __LINE__) = GetLastError(); \
+	const char *TOKENPASTE2(log_errwin32context, __LINE__)[4] = {__VA_ARGS__}; \
 	do { if ((TOKENPASTE2(log_errwin32val, __LINE__)) == (failureval)) { \
-		log_errwin32_impl(#expression, GetLastError(), TOKENPASTE2(log_errwin32context, __LINE__), __FUNCTION__, __LINE__); \
+		log_errwin32_impl(#expression, TOKENPASTE2(log_errwin32lasterr, __LINE__), \
+			TOKENPASTE2(log_errwin32context, __LINE__), __FUNCTION__, __LINE__); \
 	} } while (0)
 
 #define check_win32(vardatatypeandname, expression, failureval, ...) \
 	log_win32(vardatatypeandname, expression, failureval, __VA_ARGS__); \
 	do { if ((TOKENPASTE2(log_errwin32val, __LINE__)) == (failureval)) { \
-		check_errwin32_impl(&currenterr, #expression, errno, TOKENPASTE2(log_errwin32context, __LINE__), __FUNCTION__); \
+		check_errwin32_impl(&currenterr, #expression, TOKENPASTE2(log_errwin32lasterr, __LINE__), \
+			TOKENPASTE2(log_errwin32context, __LINE__), __FUNCTION__); \
 		goto cleanup; \
 	} } while (0)
 
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#ifdef _MSC_VER
-#define unusedapp() svdp_application*
-#define unusedint() int
-#define unusedboolptr() bool*
-#define CAST(x)
-#else
-#define unusedapp() svdp_application* unused1
-#define unusedint() int unused2
-#define unusedboolptr() bool* unused3
-#define CAST(x) (x)
-#endif
 
 #define CheckBformatStrings 0
 #if CheckBformatStrings && _DEBUG
@@ -438,15 +418,22 @@ void check_warn_impl(sv_result res, const char* msg, const char* fnname, erespon
 #define bassignformat(s, ...) s; printf(__VA_ARGS__)
 #define bformata(s, ...) s; printf(__VA_ARGS__)
 #define bformat(...) (printf(__VA_ARGS__), hhh)
-extern bstring testCheckBformatStrings;
+#define sv_log_writefmt printf
+extern bstring PlaceholderCheckFormatStrings;
 #endif
 
-void log_errno_impl(const char* exp, int nerrno, const char* context[4], const char* fn, int lineno);
-void check_errno_impl(sv_result* currenterr, const char* exp, int nerrno, const char* context[4], const char* fn);
-void log_errwin32_impl(const char* exp, unsigned long nerrno, const char* context[4], const char* fn, int lineno);
-void check_errwin32_impl(sv_result* currenterr, const char* exp, unsigned long nerrno, const char* context[4], const char* fn);
+void log_errno_impl(const char *exp,
+	int nerrno, const char *context[4], const char *fn, int lineno);
+void check_errno_impl(sv_result *currenterr,
+	const char *exp, int nerrno, const char *context[4], const char *fn);
+void log_errwin32_impl(const char *exp,
+	unsigned long nerrno, const char *context[4], const char *fn, int lineno);
+void check_errwin32_impl(sv_result *currenterr,
+	const char *exp, unsigned long nerrno, const char *context[4], const char *fn);
 extern int _;
 
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define set_self_zero() \
 	memset((self), 0, sizeof(*(self)))
 

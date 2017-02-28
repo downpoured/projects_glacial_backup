@@ -14,22 +14,21 @@ GNU General Public License for more details.
 #define TESTS_SV_H_INCLUDE
 
 #include "tests_utils.h"
-void run_sv_tests(void);
+void run_sv_tests(bool run_from_ui);
 
 typedef struct operations_test_hook {
 	os_exclusivefilehandle filelocks[10];
 	uint64_t fakelastmodtimes[10];
 	bstring filenames[10];
 	bstring dirfakeuserfiles;
-	bstring groupdir;
-	bstring pathReadyUpload;
-	bstring pathReadyDelete;
-	bstring pathRestoreTo;
-	bstring pathWorking;
-	bstring pathUntar;
-	bstring tmp;
-	bstrList* allcontentrows;
-	bstrList* allfilelistrows;
+	bstring path_group;
+	bstring path_readytoupload;
+	bstring path_readytoremove;
+	bstring path_restoreto;
+	bstring path_untar;
+	bstring tmp_path;
+	bstrlist *allcontentrows;
+	bstrlist *allfilelistrows;
 	int stage_of_test;
 } operations_test_hook;
 

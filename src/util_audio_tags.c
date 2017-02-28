@@ -12,69 +12,28 @@ GNU General Public License for more details.
 
 #include "util_audio_tags.h"
 
-const uint64_t svdpHashSeed1 = 0x1999188817771666ULL;
-const uint64_t svdpHashSeed2 = 0x9988776655443322ULL;
+uint64_t SvdpHashSeed1 = 0;
+uint64_t SvdpHashSeed2 = 0;
 const uint64_t AUDIOFILESIZEPLACEHOLDER = 1;
 
-bool readhash(const bstring getoutput, hash256* out_hash)
-{
-	bool ret = false;
-	*out_hash = CAST(hash256) {{0}};
-	byte* hashbytes = (byte*)out_hash;
-	struct tagbstring delim = bsStatic("\nMD5=");
-	bstrList* parts = bsplitstr(getoutput, &delim);
-	for (int i = 1; i < parts->qty; i++)
-	{
-		bool isgood = true;
-		for (int j = 0; j < 32; j++)
-		{
-			if (!isxdigit((unsigned char)bstrListViewAt(parts, i)[j]))
-			{
-				isgood = false;
-				sv_log_writeFmt("not enough hex digits. #parts=%d, %s", parts->qty, cstr(getoutput));
-				break;
-			}
-		}
-
-		if (isgood)
-		{
-			int results[16] = { 0 };
-			int matched = sscanf(bstrListViewAt(parts, i), 
-				"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", 
-				&results[0], &results[1], &results[2], &results[3], &results[4],
-				&results[5], &results[6], &results[7], &results[8], &results[9], 
-				&results[10], &results[11], &results[12], &results[13], &results[14], &results[15]);
-			log_b(matched == 16, "not all hex digits read %d %s", matched, cstr(getoutput));
-			for (int j = 0; j < 16; j++)
-			{
-				hashbytes[j] = (byte)results[j];
-			}
-			if (matched == 16)
-			{
-				ret = true;
-				break;
-			}
-		}
-	}
-	
-	bstrListDestroy(parts);
-	return ret;
-}
-
-check_result get_audiostream_hash_excluding_metadata(const char* ffmpeg, const char* path, hash256* out_hash)
+check_result get_audiostream_hash_excluding_metadata_once(const char *ffmpeg,
+	const char *path, hash256 *out_hash)
 {
 	sv_result currenterr = {};
 	memset(out_hash, 0, sizeof(*out_hash));
-	const char* args[] = {
+	const char *args[] = {
+		linuxonly(ffmpeg)
 		"-i",
 		path,
-		"-vn", /* disable video; id3 artwork is used as video stream */
+		"-vn", /* disable video; otherwise id3 artwork is used as video stream */
 		"-c:a",
-		"copy", /* we want the mp3 bitstream, not the audio converted to signed 16-bit raw */
+		"copy", /* we want the mp3 bitstream and not the audio converted to signed 16-bit raw */
+		"-threads",
+		"1",
 		"-f",
 		"md5",
-		"-", /* results are sent to stdout */
-		NULL}; 
+		"-", /* stdout */
+		NULL};
 
 	bstring getoutput = bstring_open();
 	bstring useargscombined = bstring_open();
@@ -83,15 +42,97 @@ check_result get_audiostream_hash_excluding_metadata(const char* ffmpeg, const c
 	check_b(readhash(getoutput, out_hash), "ffmpeg failed for file %s output=%s", path, cstr(getoutput));
 
 cleanup:
+	bdestroy(getoutput);
+	bdestroy(useargscombined);
+	return currenterr;
+}
+
+bool readhash(const bstring getoutput, hash256 *out_hash)
+{
+	bool ret = false;
+	*out_hash = hash256zeros;
+	byte *hashbytes = (byte *)out_hash;
+	tagbstring delim = bstr_static("\nMD5=");
+	bstrlist *parts = bsplitstr(getoutput, &delim);
+	sv_log_writefmt("reading md5 #parts=%d", parts->qty);
+	for (int i = 1; i < parts->qty; i++)
+	{
+		bool isgood = true;
+		if (blength(parts->entry[i]) >= 32)
+		{
+			for (int j = 0; j < 32; j++)
+			{
+				if (!isxdigit((unsigned char)bstrlist_view(parts, i)[j]))
+				{
+					isgood = false;
+					sv_log_writefmt("not enough hex digits. %s", cstr(getoutput));
+					break;
+				}
+			}
+		}
+		else
+		{
+			sv_log_writefmt("string too short. %s", cstr(getoutput));
+			isgood = false;
+		}
+
+		if (isgood)
+		{
+			int results[16] = { 0 };
+			int matched = sscanf(bstrlist_view(parts, i), 
+				"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+				&results[0], &results[1], &results[2], &results[3], &results[4],
+				&results[5], &results[6], &results[7], &results[8], &results[9],
+				&results[10], &results[11], &results[12], &results[13], &results[14], &results[15]);
+			log_b(matched == 16, "not all hex digits read %d %s", matched, cstr(getoutput));
+			if (matched == 16)
+			{
+				for (int j = 0; j < 16; j++)
+				{
+					hashbytes[j] = (byte)results[j];
+				}
+
+				ret = true;
+				break;
+			}
+		}
+	}
+
+	bstrlist_close(parts);
+	return ret;
+}
+
+check_result get_audiostream_hash_excluding_metadata(const char *ffmpeg,
+	const char *path, hash256 *out_hash)
+{
+	sv_result currenterr = {};
+	const uint64_t md5emptystring1 = 0x4b2008fd98c1dd4ULL, md5emptystring2 = 0x7e42f8ec980980e9ULL;
+	extern uint32_t max_tries;
+	for (uint32_t attempt = 0; attempt < max_tries; attempt++)
+	{
+		/* ffmpeg sometimes returns md5(''), in which case we should retry. */
+		check(get_audiostream_hash_excluding_metadata_once(ffmpeg, path, out_hash));
+		if (out_hash->data[0] == md5emptystring1 && out_hash->data[1] == md5emptystring2)
+		{
+			log_b(0, "get_audiostream_hash_excluding_metadata got md5('') hash.");
+		}
+		else
+		{
+			break;
+		}
+	}
+	
+cleanup:
 	return currenterr;
 }
 
 /* editing an id3 tag can change the filesize. and so if we are in separate-metadata mode, 
 a different filesize doesn't mean the file has actually changed, maybe only the metadata changed. */
 void adjustfilesize_if_audio_file(uint32_t separatemetadata, 
-	knownfileextension ext, uint64_t size_from_disk, uint64_t* outputsize)
+	knownfileextension ext, uint64_t size_from_disk, uint64_t *outputsize)
 {
-	if (separatemetadata && ext != knownfileextensionNone && ext != knownfileextensionOtherBinary)
+	if (separatemetadata && ext != knownfileextension_none && 
+		ext != knownfileextension_otherbinary)
 	{
 		*outputsize = AUDIOFILESIZEPLACEHOLDER;
 	}
@@ -104,9 +145,9 @@ void adjustfilesize_if_audio_file(uint32_t separatemetadata,
 /* CRC-32 version 2.0.0 by Craig Bruce, 2006-04-29. */
 /* http://www.csbruce.com/~csbruce/software/crc32.c */
 /* PUBLIC-DOMAIN SOFTWARE. */
-static uint32_t Crc32_ComputeBuf(uint32_t inCrc32, const void *buf, int bufLen)
+static uint32_t Crc32_ComputeBuf(uint32_t incrc32, const void *buf, int buflen)
 {
-	static const uint32_t crcTable[] = {
+	static const uint32_t crc_table[] = {
 		0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535,
 		0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD,
 		0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2, 0xF3B97148, 0x84BE41DE, 0x1ADAD47D,
@@ -144,94 +185,87 @@ static uint32_t Crc32_ComputeBuf(uint32_t inCrc32, const void *buf, int bufLen)
 		0x47B2CF7F, 0x30B5FFE9, 0xBDBDF21C, 0xCABAC28A, 0x53B39330, 0x24B4A3A6, 0xBAD03605,
 		0xCDD70693, 0x54DE5729, 0x23D967BF, 0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94,
 		0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D };
-
 	uint32_t crc32 = 0;
-	unsigned char *byteBuf = 0;
+	unsigned char *bytebuf = 0;
 
 	/* accumulate crc32 for buffer */
-	crc32 = inCrc32 ^ 0xFFFFFFFF;
-	byteBuf = (unsigned char*)buf;
-	for (int i = 0; i < bufLen; i++) {
-		crc32 = (crc32 >> 8) ^ crcTable[(crc32 ^ byteBuf[i]) & 0xFF];
+	crc32 = incrc32 ^ 0xFFFFFFFF;
+	bytebuf = (unsigned char *)buf;
+	for (int i = 0; i < buflen; i++) {
+		crc32 = (crc32 >> 8) ^ crc_table[(crc32 ^ bytebuf[i]) & 0xFF];
 	}
 	return (crc32 ^ 0xFFFFFFFF);
 }
 
-void sphash_compute256(const byte* buf, uint32_t bufLen, hash256* outHash)
-{
-	spooky_state hasher = {};
-	spooky_init(&hasher, svdpHashSeed1, svdpHashSeed2);
-	spooky_update(&hasher, buf, bufLen);
-	spooky_final(&hasher, &outHash->data[0], &outHash->data[1], &outHash->data[2], &outHash->data[3]);
-}
-
-sv_hasher sv_hasher_open(const char* loggingcontext)
+sv_hasher sv_hasher_open(const char *loggingcontext)
 {
 	sv_hasher ret = {0};
-	spooky_init(&ret.state, svdpHashSeed1, svdpHashSeed2);
-	ret.buflen32u = 64 * 1024; /* benchmarks for my config say 64k is faster than 4k and slower than 256k */
+	spooky_init(&ret.state, SvdpHashSeed1, SvdpHashSeed2);
+	ret.buflen32u = 64 * 1024; 
+	/* benchmarks for my config say 64k is faster than 4k and slower than 256k */
 	ret.buflen32s = cast32u32s(ret.buflen32u);
-	check_fatal(ret.buflen32u == 4096 * 16, "buflen32u not multiple of 4k");
+	check_fatal(ret.buflen32u % 4096 == 0, "buffer length should be multiple of 4096.");
 	ret.buf = os_aligned_malloc(ret.buflen32u, 4096);
 	ret.loggingcontext = loggingcontext;
 	return ret;
 }
 
-void sv_hasher_close(sv_hasher* self)
+void sv_hasher_close(sv_hasher *self)
 {
-	os_aligned_free(&self->buf);
-	set_self_zero();
+	if (self)
+	{
+		os_aligned_free(&self->buf);
+		set_self_zero();
+	}
 }
 
-check_result sv_hasher_wholefile(sv_hasher* self, int fd, hash256* out_hash, uint32_t* outcrc32)
+check_result sv_hasher_wholefile(sv_hasher *self, int fd, hash256 *out_hash, uint32_t *outcrc32)
 {
 	sv_result currenterr = {};
 	*outcrc32 = 0;
 	if (out_hash)
 	{
 		memset(out_hash, 0, sizeof(*out_hash));
-		spooky_init(&self->state, svdpHashSeed1, svdpHashSeed2);
+		spooky_init(&self->state, SvdpHashSeed1, SvdpHashSeed2);
 	}
 
 	check_b(fd > 0, "bad file handle for %s", self->loggingcontext);
-	check_errno(_, (int)lseek(fd, 0, SEEK_SET), self->loggingcontext);
+	check_errno(_, cast64s32s(lseek(fd, 0, SEEK_SET)), self->loggingcontext);
 	while (true)
 	{
-#ifdef __linux__
-		check_errno(int bytesRead, (int)read(fd, self->buf, self->buflen32u), self->loggingcontext);
-#else
-		check_errno(int bytesRead, read(fd, self->buf, self->buflen32u), self->loggingcontext);
-#endif
-		if (bytesRead <= 0)
+		check_errno(int bytes_read, cast64s32s(read(
+			fd, self->buf, self->buflen32u)), self->loggingcontext);
+		if (bytes_read <= 0)
 		{
 			break;
 		}
 		
 		if (out_hash)
 		{
-			spooky_update(&self->state, self->buf, cast32s32u(bytesRead));
+			spooky_update(&self->state, self->buf, cast32s32u(bytes_read));
 		}
 
-		*outcrc32 = Crc32_ComputeBuf(*outcrc32, self->buf, bytesRead);
+		*outcrc32 = Crc32_ComputeBuf(*outcrc32, self->buf, bytes_read);
 	}
 
 	if (out_hash)
 	{
-		spooky_final(&self->state, &out_hash->data[0], &out_hash->data[1], &out_hash->data[2], &out_hash->data[3]);
+		spooky_final(&self->state,
+			&out_hash->data[0], &out_hash->data[1], &out_hash->data[2], &out_hash->data[3]);
 	}
-
 cleanup:
 	return currenterr;
 }
 
-static const uint32_t extensionsAudio[] = {
+static const uint32_t extensions_audio[] = {
 	chars_to_uint32('\0', 'o', 'g', 'g'),
 	chars_to_uint32('\0', 'm', 'p', '3'),
+	chars_to_uint32('\0', 'm', 'p', '4'),
 	chars_to_uint32('\0', 'm', '4', 'a'),
 	chars_to_uint32('f', 'l', 'a', 'c')
 };
 
-static const uint32_t extensionsAlreadyCompressed[] = {
+static const uint32_t extensions_already_compressed[] = {
 	chars_to_uint32('\0', '\0', '7', 'z'),
 	chars_to_uint32('\0', '\0', 'g', 'z'),
 	chars_to_uint32('\0', '\0', 'x', 'z'),
@@ -259,64 +293,58 @@ static const uint32_t extensionsAlreadyCompressed[] = {
 	chars_to_uint32('a', 'l', 'a', 'c')
 };
 
-uint32_t extension_into_uint32(const char* s, uint32_t len)
+uint32_t extension_into_uint32(const char *s, int len)
 {
-	const char* bufLast = s + len;
+	const char *last_char = s + (len - 1);
 	if (len < 5)
 		return 0;
-	else if (*(bufLast - 3) == '.')
-		return chars_to_uint32('\0', '\0', *(bufLast - 2), *(bufLast - 1));
-	else if (*(bufLast - 4) == '.')
-		return chars_to_uint32('\0', *(bufLast - 3), *(bufLast - 2), *(bufLast - 1));
-	else if (*(bufLast - 5) == '.')
-		return chars_to_uint32(*(bufLast - 4), *(bufLast - 3), *(bufLast - 2), *(bufLast - 1));
+	else if (*(last_char - 2) == '.')
+		return chars_to_uint32('\0', '\0', *(last_char - 1), *(last_char));
+	else if (*(last_char - 3) == '.')
+		return chars_to_uint32('\0', *(last_char - 2), *(last_char - 1), *(last_char));
+	else if (*(last_char - 4) == '.')
+		return chars_to_uint32(*(last_char - 3), *(last_char - 2), *(last_char - 1), *(last_char));
 	else
 		return 0;
 }
 
-knownfileextension get_file_extension_info(const char* filename, uint32_t len)
+knownfileextension get_file_extension_info(const char *filename, int len)
 {
 	uint32_t extuint32 = extension_into_uint32(filename, len);
-	knownfileextension ret = knownfileextensionNone;
+	knownfileextension ret = knownfileextension_none;
 	if (extuint32)
 	{
-		staticassert(countof(extensionsAudio) == 4);
-		if (extuint32 == extensionsAudio[0])
-		{
-			ret = knownfileextensionOgg;
-		}
-		if (extuint32 == extensionsAudio[1])
-		{
-			ret = knownfileextensionMp3;
-		}
-		if (extuint32 == extensionsAudio[2])
-		{
-			ret = knownfileextensionM4a;
-		}
-		if (extuint32 == extensionsAudio[3])
-		{
-			ret = knownfileextensionFlac;
-		}
+		staticassert(countof(extensions_audio) == 5);
+		if (extuint32 == extensions_audio[0])
+			ret = knownfileextension_ogg;
+		if (extuint32 == extensions_audio[1])
+			ret = knownfileextension_mp3;
+		if (extuint32 == extensions_audio[2])
+			ret = knownfileextension_mp4;
+		if (extuint32 == extensions_audio[3])
+			ret = knownfileextension_m4a;
+		if (extuint32 == extensions_audio[4])
+			ret = knownfileextension_flac;
 
-		for (size_t i = 0; i < countof(extensionsAlreadyCompressed); i++)
+		for (size_t i = 0; i < countof(extensions_already_compressed); i++)
 		{
-			if (extuint32 == extensionsAlreadyCompressed[i] )
+			if (extuint32 == extensions_already_compressed[i])
 			{
-				ret = knownfileextensionOtherBinary;
+				ret = knownfileextension_otherbinary;
 			}
 		}
 	}
 	return ret;
 }
 
-check_result hash_of_file(os_exclusivefilehandle* handle, uint32_t separateaudio,
-	knownfileextension ext, const char* metadatabinary, hash256* out_hash, uint32_t* outcrc32)
+check_result hash_of_file(os_exclusivefilehandle *handle, uint32_t separateaudio,
+	knownfileextension ext, const char *metadatabinary, hash256 *out_hash, uint32_t *outcrc32)
 {
 	sv_result currenterr = {};
 	sv_hasher hasher = sv_hasher_open(cstr(handle->loggingcontext));
-	if (ext != knownfileextensionNone && ext != knownfileextensionOtherBinary && separateaudio)
+	if (ext != knownfileextension_none && ext != knownfileextension_otherbinary && separateaudio)
 	{
-		const char* path = cstr(handle->loggingcontext);
+		const char *path = cstr(handle->loggingcontext);
 		check_b(os_file_exists(path), "file not found %s", path);
 		check_b(os_file_exists(metadatabinary), "file not found %s", metadatabinary);
 		sv_result res = get_audiostream_hash_excluding_metadata(metadatabinary, path, out_hash);
@@ -324,6 +352,7 @@ check_result hash_of_file(os_exclusivefilehandle* handle, uint32_t separateaudio
 		{
 			/* this is ok, maybe it's an audio format ffmpeg doesn't support yet. 
 			we'll fall back to sphash. */
+			sv_log_writefmt("for %s type=%d falling back to sphash", path, ext);
 			check(sv_hasher_wholefile(&hasher, handle->fd, out_hash, outcrc32));
 			sv_result_close(&res);
 		}
@@ -342,22 +371,45 @@ cleanup:
 	return currenterr;
 }
 
-check_result checkffmpegworksasexpected(svdp_archiver* archiver, uint32_t separatemetadata, const char* tmpdir)
+
+
+check_result get_file_checksum_string(const char *filepath, bstring s)
+{
+	sv_result currenterr = {};
+	hash256 hash = {};
+	uint32_t crc = 0;
+	uint64_t filesize = os_getfilesize(filepath);
+	os_exclusivefilehandle handle = {};
+	check(os_exclusivefilehandle_open(&handle, filepath, true, NULL));
+	check(hash_of_file(&handle, 0, knownfileextension_otherbinary, "", &hash, &crc));
+	bstrclear(s);
+	hash256tostr(&hash, s);
+	bformata(s, ",crc32-%08X,size-%llu", crc, filesize);
+cleanup:
+	os_exclusivefilehandle_close(&handle);
+	return currenterr;
+}
+
+check_result checkffmpegworksasexpected(svdp_archiver *archiver,
+	uint32_t separatemetadata, const char *tmpdir)
 {
 	sv_result currenterr = {};
 	if (separatemetadata)
 	{
 		bstring path = bformat("%s%stest.mp3", tmpdir, pathsep);
-		hash256 hash = { };
+		hash256 hash = {};
 		check_b(os_create_dirs(tmpdir), "could not create %s", tmpdir);
 		check(writevalidmp3(cstr(path), false, false, false));
-		const char* msg = "\n\nWe were not able to verify that ffmpeg is installed. Possible reasons: 1) "
-			"ffmpeg is not correctly installed 2) an incompatable version of ffmpeg is installed\n"
-			"To continue without using this feature, go to 'Edit Group' and turn off the 'separate audio metadata' feature.";
-		sv_result res = get_audiostream_hash_excluding_metadata(cstr(archiver->path_audiometadata_binary), cstr(path), &hash);
+		const char *msg = "\n\nWe were not able to verify that ffmpeg is installed. "
+			"Possible reasons: 1) ffmpeg is not correctly installed 2) an incompatable "
+			"version of ffmpeg is installed\n"
+			"To continue without using this feature, go to 'Edit Group' and turn off the "
+			"'separate audio metadata' feature.";
+		sv_result res = get_audiostream_hash_excluding_metadata(
+			cstr(archiver->path_audiometadata_binary), cstr(path), &hash);
 		check_b(res.code == 0, "%s. %s", cstr(res.msg), msg);
-		check_b(hash.data[0] == 0x611c9c9e3d1e62ccULL && hash.data[1] == 0x1ffaa7d05b187124ULL && 
-			hash.data[2] == 0 && hash.data[3] == 0,
+		check_b(hash.data[0] == 0x611c9c9e3d1e62ccULL && hash.data[1] == 0x1ffaa7d05b187124ULL
+			&& hash.data[2] == 0 && hash.data[3] == 0,
 			"%llx %llx\nhashes not equal. %s", castull(hash.data[0]), castull(hash.data[1]), msg);
 
 	cleanup:
@@ -367,31 +419,77 @@ check_result checkffmpegworksasexpected(svdp_archiver* archiver, uint32_t separa
 	return currenterr;
 }
 
+void get_tar_version_from_string(bstring s, double *outversion)
+{
+	*outversion = 0.0;
+	bstr_replaceall(s, "\r\n", "\n");
+	bstrlist *lines = bsplit(s, '\n');
+	if (lines->qty > 0)
+	{
+		const char *line1 = bstrlist_view(lines, 0);
+		if (s_startswith(line1, "tar (GNU tar) "))
+		{
+			const char *version = line1 + strlen("tar (GNU tar) ");
+			const char *point = strchr(version, '.');
+			if (point)
+			{
+				(void)sscanf(version, "%lf", outversion);
+			}
+		}
+	}
+
+	bstrlist_close(lines);
+}
+
+check_result verify_tar_version(svdp_archiver *archiver)
+{
+	sv_result currenterr = {};
+	int retcode = -1;
+	const char *args[] = { linuxonly(cstr(archiver->path_archiver_binary)) "--version", NULL };
+	check(os_run_process(cstr(archiver->path_archiver_binary), args, true, archiver->tmp_argscombined,
+		archiver->tmp_resultstring, &retcode));
+	check_b(retcode == 0, "needed GNU tar version greater than 1.19. got return code %d", retcode);
+	double version = 0;
+	get_tar_version_from_string(archiver->tmp_resultstring, &version);
+	check_b(version > 1.19, "needed GNU tar version greater than 1.19 but saw version %.3f.", version);
+cleanup:
+	return currenterr;
+}
+
 #ifdef __linux__
-check_result checkexternaltoolspresent(svdp_archiver* archiver, uint32_t separatemetadata)
+check_result checkexternaltoolspresent(svdp_archiver *archiver, uint32_t separatemetadata)
 {
 	sv_result currenterr = {};
 	check(os_binarypath("7z", archiver->path_compression_binary));
 	check_b(os_file_exists(cstr(archiver->path_compression_binary)),
-		"We are not able to continue. This program requires '7zip' to be installed. Please install the "
-		"package called 'p7zip' and try again.");
+		"We are not able to continue. This program requires '7zip' to be installed. "
+		"Please install the package called 'p7zip-full' and try again.");
 
 	check(os_binarypath("tar", archiver->path_archiver_binary));
 	check_b(os_file_exists(cstr(archiver->path_archiver_binary)),
-		"We are not able to continue. This program requires 'tar' to be installed.");
+		"We are not able to continue. This program requires GNU 'tar' to be installed.");
+	check(verify_tar_version(archiver));
 
 	if (separatemetadata)
 	{
-		check(os_binarypath("ffmpeg", archiver->path_archiver_binary));
-		check_b(os_file_exists(cstr(archiver->path_archiver_binary)),
-			"We are not able to continue. Please either install 'ffmpeg' or edit this group to disable "
-			"the separatemetadata feature.");
+		/* cat /etc/os-release to confirm we are on ubuntu 14.04, which is 'trusty'
+			sudo apt-add-repository ppa:mc3man/trusty-media
+			sudo apt-get update
+			sudo apt-get install ffmpeg
+		*/
+		check(os_binarypath("ffmpeg", archiver->path_audiometadata_binary));
+		check_b(os_file_exists(cstr(archiver->path_audiometadata_binary)),
+			"When the separatemetadata feature is used, ffmpeg is needed. Please either install "
+			"'ffmpeg' or edit this group "
+			"to disable the separatemetadata feature.");
+		check(checkffmpegworksasexpected(archiver, separatemetadata, 
+			cstr(archiver->path_intermediate_archives)));
 	}
 cleanup:
 	return currenterr;
 }
 #else
-check_result checkexternaltoolspresent(svdp_archiver* archiver, uint32_t separatemetadata)
+check_result checkexternaltoolspresent(svdp_archiver *archiver, uint32_t separatemetadata)
 {
 	sv_result currenterr = {};
 	bstring thisdir = os_getthisprocessdir();
@@ -414,8 +512,9 @@ check_result checkexternaltoolspresent(svdp_archiver* archiver, uint32_t separat
 
 	check_b(os_dir_exists(cstr(toolsdir)), "We were not able to find the 'tools' directory.");
 	bassignformat(archiver->path_archiver_binary, "%s%star.exe", cstr(toolsdir), pathsep);
-	check_b(os_file_exists(cstr(archiver->path_archiver_binary)), 
-		"We were not able to find the program 'tools\\tar.exe'");
+	check_b(os_file_exists(cstr(archiver->path_archiver_binary)), "We were not able to find the "
+		"program 'tools\\tar.exe'");
+	check(verify_tar_version(archiver));
 
 	bassignformat(archiver->path_compression_binary, "%s%s7z.exe", cstr(toolsdir), pathsep);
 	check_b(os_file_exists(cstr(archiver->path_compression_binary)), 
@@ -425,8 +524,10 @@ check_result checkexternaltoolspresent(svdp_archiver* archiver, uint32_t separat
 	{
 		bassignformat(archiver->path_audiometadata_binary, "%s%sffmpeg.exe", cstr(toolsdir), pathsep);
 		check_b(os_file_exists(cstr(archiver->path_audiometadata_binary)), 
-			"We were not able to find tools\\ffmpeg.exe. Please either add this file, "
-			"or edit this group to disable the separatemetadata feature.");
+			"We were not able to find tools\\ffmpeg.exe. Please either add this file, or edit this "
+			"group to disable the separatemetadata feature.");
+		check(checkffmpegworksasexpected(archiver, separatemetadata,
+			cstr(archiver->path_intermediate_archives)));
 	}
 
 cleanup:

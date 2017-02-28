@@ -16,10 +16,10 @@ GNU General Public License for more details.
 #include "operations.h"
 
 bool testintimpl(int lineno, unsigned long long n1, unsigned long long n2);
-bool teststrimpl(int lineno, const char* s1, const char* s2);
-bool testlistimpl(int lineno, const char* expected, const bstrList* list);
-void expect_err_with_message(sv_result res, const char* msgcontains);
-check_result tmpwritetextfile(const char* dir, const char* leaf, bstring fullpath, const char* contents);
+bool teststrimpl(int lineno, const char *s1, const char *s2);
+bool testlistimpl(int lineno, const char *expected, const bstrlist *list);
+void expect_err_with_message(sv_result res, const char *msgcontains);
+check_result tmpwritetextfile(const char *dir, const char *leaf, bstring fullpath, const char *contents);
 check_result run_utils_tests(void);
 
 #define TestEqs(s1, s2) do { \
