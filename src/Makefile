@@ -1,8 +1,8 @@
 
 CC=gcc
-CFLAGS=-c -Werror -std=c11 -Wno-unused-label -Wno-unused-function -D_GNU_SOURCE 
+CFLAGS=-c  -Werror -std=c11 -Wno-unused-label -Wno-unused-function -D_GNU_SOURCE 
 LDFLAGS=
-SOURCES=main.c testmacros.c
+SOURCES=main.c sqlite3.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=runbackup.out
 
@@ -22,3 +22,6 @@ $(EXECUTABLE): $(OBJECTS)
 clean:
 	rm *.o
 	rm runbackup.out
+
+
+
