@@ -1,4 +1,6 @@
 /*
+util.c
+
 GlacialBackup is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -25,6 +27,11 @@ sv_array sv_array_open(uint32_t elementsize, uint32_t initialcapacity)
     return self;
 }
 
+sv_array sv_array_open_u64()
+{
+    return sv_array_open(sizeof32u(uint64_t), 1);
+}
+
 void sv_array_reserve(sv_array *self, uint32_t requestedcapacity)
 {
     if (requestedcapacity <= self->capacity)
@@ -33,16 +40,22 @@ void sv_array_reserve(sv_array *self, uint32_t requestedcapacity)
     }
 
     /* double container size until large enough.*/
-    requestedcapacity = nearest_power_of_two32(requestedcapacity);
-    self->buffer = sv_realloc(self->buffer, requestedcapacity, self->elementsize);
+    requestedcapacity = nearest_power_of_two(requestedcapacity);
+    self->buffer = sv_realloc(self->buffer, requestedcapacity,
+        self->elementsize);
     self->capacity = requestedcapacity;
 }
 
-void sv_array_append(sv_array *self, const void *inbuffer, uint32_t incount)
+void sv_array_append(sv_array *self,
+    const void *inbuffer,
+    uint32_t incount)
 {
-    sv_array_reserve(self, checkedadd32(self->length, incount));
     uint32_t index = checkedmul32(self->length, self->elementsize);
-    memcpy(&self->buffer[index], inbuffer, checkedmul32(self->elementsize, incount));
+    sv_array_reserve(self, checkedadd32(self->length, incount));
+    memcpy(&self->buffer[index],
+        inbuffer,
+        checkedmul32(self->elementsize, incount));
+
     self->length += incount;
 }
 
@@ -50,7 +63,10 @@ void sv_array_appendzeros(sv_array *self, uint32_t incount)
 {
     sv_array_reserve(self, checkedadd32(self->length, incount));
     uint32_t index = checkedmul32(self->length, self->elementsize);
-    memset(&self->buffer[index], 0, checkedmul32(self->elementsize, incount));
+    memset(&self->buffer[index],
+        0,
+        checkedmul32(self->elementsize, incount));
+
     self->length += incount;
 }
 
@@ -73,56 +89,24 @@ byte *sv_array_at(sv_array *self, uint32_t index)
 const byte *sv_array_atconst(const sv_array *self, uint32_t index)
 {
     check_fatal(index < self->length, "out-of-bounds read");
-    uint32_t index_bytes = checkedmul32(index, self->elementsize);
-    return &self->buffer[index_bytes];
+    uint32_t byteindex = checkedmul32(index, self->elementsize);
+    return &self->buffer[byteindex];
 }
 
 /* helper for making an array of uint64_t. */
 uint64_t sv_array_at64u(const sv_array *self, uint32_t index)
 {
-    check_fatal(self->elementsize == sizeof32u(uint64_t), "unexpected elementsize");
+    check_fatal(self->elementsize == sizeof32u(uint64_t),
+        "array was not inited to have element size u64.");
     return *(const uint64_t *)sv_array_atconst(self, index);
 }
 
 /* helper for making an array of uint64_t. */
 void sv_array_add64u(sv_array *self, uint64_t n)
 {
-    check_fatal(self->elementsize == sizeof32u(uint64_t), "unexpected elementsize");
+    check_fatal(self->elementsize == sizeof32u(uint64_t),
+        "array was not inited to have element size u64.");
     sv_array_append(self, (byte *)&n, 1);
-}
-
-/* binary search (list must be sorted), returns index of lower bound
-input must be >= at least one array element
-*/
-uint32_t sv_array_64ulowerbound(sv_array *self, uint64_t n)
-{
-    check_fatal(self->elementsize == sizeof32u(uint64_t), "unexpected elementsize");
-    check_fatal(self->length > 0, "list cannot be empty");
-    check_fatal(n >= sv_array_at64u(self, 0), "input must be >= least one array element");
-    uint32_t lo = 0;
-    uint32_t hi = self->length;
-    while (lo < hi)
-    {
-        uint32_t mid = lo + (hi - lo) / 2;
-        uint64_t current = sv_array_at64u(self, mid);
-        if (current >= n)
-        {
-            hi = mid;
-        }
-        else
-        {
-            lo = mid + 1;
-        }
-    }
-
-    if (lo < self->length && sv_array_at64u(self, lo) == n)
-    {
-        return lo;
-    }
-    else
-    {
-        return lo - 1;
-    }
 }
 
 void sv_array_close(sv_array *self)
@@ -134,55 +118,78 @@ void sv_array_close(sv_array *self)
     }
 }
 
-sv_2d_array sv_2d_array_open(uint32_t elementsize)
+sv_2darray sv_2darray_open(uint32_t elementsize)
 {
-    sv_2d_array ret = {};
+    sv_2darray ret = {};
     ret.arr = sv_array_open(sizeof32u(sv_array), 0);
     ret.elementsize = elementsize;
     return ret;
 }
 
-void sv_2d_array_ensure_space(sv_2d_array *self, uint32_t d1, uint32_t d2)
+byte *sv_2darray_get_expand(sv_2darray *self, uint32_t d1, uint32_t d2)
 {
-    if (d1 + 1 > self->arr.length)
+    if (d1 >= self->arr.length)
     {
         uint32_t formerlength = self->arr.length;
         sv_array_appendzeros(&self->arr, (d1 + 1) - formerlength);
         for (uint32_t i = formerlength; i < self->arr.length; i++)
         {
-            sv_array *subarr = (sv_array *)sv_array_at(&self->arr, i);
-            *subarr = sv_array_open(self->elementsize, 0);
+            sv_array *child = (sv_array *)sv_array_at(&self->arr, i);
+            *child = sv_array_open(self->elementsize, 0);
         }
     }
 
-    sv_array *subarr = (sv_array *)sv_array_at(&self->arr, d1);
-    if (d2 + 1 > subarr->length)
+    sv_array *child = (sv_array *)sv_array_at(&self->arr, d1);
+    if (d2 >= child->length)
     {
-        sv_array_appendzeros(subarr, (d2 + 1) - subarr->length);
+        sv_array_appendzeros(child, (d2 + 1) - child->length);
     }
+
+    return sv_2darray_at(self, d1, d2);
 }
 
-byte *sv_2d_array_at(sv_2d_array *self, uint32_t d1, uint32_t d2)
+byte *sv_2darray_at(sv_2darray *self, uint32_t d1, uint32_t d2)
 {
-    return (byte *)sv_2d_array_atconst(self, d1, d2);
+    return (byte *)sv_2darray_atconst(self, d1, d2);
 }
 
-const byte *sv_2d_array_atconst(const sv_2d_array *self, uint32_t d1, uint32_t d2)
+const byte *sv_2darray_atconst(const sv_2darray *self,
+    uint32_t d1,
+    uint32_t d2)
 {
     check_fatal(d1 < self->arr.length, "out-of-bounds read");
-    const sv_array *subarr = (const sv_array *)sv_array_atconst(&self->arr, d1);
-    check_fatal(d2 < subarr->length, "out-of-bounds read");
-    return sv_array_atconst(subarr, d2);
+    const sv_array *child = (const sv_array *)sv_array_atconst(
+        &self->arr, d1);
+    check_fatal(d2 < child->length, "out-of-bounds read");
+    return sv_array_atconst(child, d2);
 }
 
-void sv_2d_array_close(sv_2d_array *self)
+check_result sv_2darray_foreach(sv_2darray *self,
+    sv_2darray_iter_cb cb,
+    void *context)
+{
+    sv_result currenterr = {};
+    for (uint32_t i = 0; i < self->arr.length; i++)
+    {
+        sv_array *child = (sv_array *)sv_array_at(&self->arr, i);
+        for (uint32_t j = 0; j < child->length; j++)
+        {
+            check(cb(context, i, j, sv_2darray_at(self, i, j)));
+        }
+    }
+
+cleanup:
+    return currenterr;
+}
+
+void sv_2darray_close(sv_2darray *self)
 {
     if (self)
     {
         for (uint32_t i = 0; i < self->arr.length; i++)
         {
-            sv_array *subarr = (sv_array *)sv_array_at(&self->arr, i);
-            sv_array_close(subarr);
+            sv_array *child = (sv_array *)sv_array_at(&self->arr, i);
+            sv_array_close(child);
         }
 
         sv_array_close(&self->arr);
@@ -195,14 +202,17 @@ sv_pseudosplit sv_pseudosplit_open(const char *s)
     sv_pseudosplit ret = {};
     ret.currentline = bstring_open();
     ret.text = bfromcstr(s);
-    ret.splitpoints = sv_array_open(sizeof32u(uint64_t), 1);
+    ret.splitpoints = sv_array_open_u64();
     return ret;
 }
 
 void sv_pseudosplit_split(sv_pseudosplit *self, char delim)
 {
+    /* like splitting a string, but faster */
     sv_array_truncatelength(&self->splitpoints, 0);
-    sv_array_add64u(&self->splitpoints, 0); /* the first line begins at offset 0. */
+
+    /* by convention the first line begins at 0. */
+    sv_array_add64u(&self->splitpoints, 0);
     for (int i = 0; i < blength(self->text); i++)
     {
         if (cstr(self->text)[i] == delim)
@@ -212,24 +222,22 @@ void sv_pseudosplit_split(sv_pseudosplit *self, char delim)
     }
 }
 
-const char *sv_pseudosplit_viewat(sv_pseudosplit *self, uint32_t linenumber)
+const char *sv_pseudosplit_viewat(sv_pseudosplit *self, uint32_t linenum)
 {
-    sv_pseudosplit_at(self, linenumber, self->currentline);
+    check_fatal(linenum < self->splitpoints.length,
+        "attempted read out-of-bounds");
+
+    /* if it's the last line, go to the end of the string */
+    uint64_t offset1 = sv_array_at64u(&self->splitpoints, linenum);
+    uint64_t offset2 = (linenum == self->splitpoints.length - 1) ?
+        (cast32s32u(blength(self->text))) :
+        (sv_array_at64u(&self->splitpoints, linenum + 1) - 1);
+
+    bassignblk(self->currentline,
+        cstr(self->text) + offset1,
+        cast64u32s(offset2 - offset1));
+
     return cstr(self->currentline);
-}
-
-void sv_pseudosplit_at(sv_pseudosplit *self, uint32_t linenumber, bstring s)
-{
-    check_fatal(linenumber < self->splitpoints.length, "attempted read out-of-bounds");
-    uint64_t offset1 = sv_array_at64u(&self->splitpoints, linenumber);
-    uint64_t offset2 = (linenumber == self->splitpoints.length-1) ? cast32s32u(blength(self->text)) :
-        (sv_array_at64u(&self->splitpoints, linenumber + 1) - 1);
-    bassignblk(s, cstr(self->text) + offset1, cast64u32s(offset2 - offset1));
-}
-
-uint32_t sv_pseudosplit_pos_to_linenumber(sv_pseudosplit *self, uint64_t offset)
-{
-    return sv_array_64ulowerbound(&self->splitpoints, offset);
 }
 
 void sv_pseudosplit_close(sv_pseudosplit *self)
@@ -320,16 +328,7 @@ int32_t checkedadd32s(int32_t a, int32_t b)
     return a + b;
 }
 
-uint32_t round_up_to_multiple(uint32_t a, uint32_t mod)
-{
-    uint32_t sum = checkedadd32(a, mod);
-    if (sum == 0)
-        return mod;
-    else
-        return checkedmul32((sum - 1) / mod, mod);
-}
-
-uint32_t nearest_power_of_two32(uint32_t a)
+uint32_t nearest_power_of_two(uint32_t a)
 {
     check_fatal(a < UINT32_MAX / 4, "overflow");
     if (a == 0)
@@ -346,7 +345,7 @@ uint32_t nearest_power_of_two32(uint32_t a)
     return result;
 }
 
-uint64_t make_uint64(uint32_t hi, uint32_t lo)
+uint64_t make_u64(uint32_t hi, uint32_t lo)
 {
     return lo | (((uint64_t)hi) << 32);
 }
@@ -422,9 +421,9 @@ unsigned long long castull(uint64_t n)
     return (unsigned long long)n;
 }
 
-byte *sv_calloc(uint32_t a, uint32_t b)
+byte *sv_calloc(uint32_t count, uint32_t size)
 {
-    void *ret = calloc(a, b);
+    void *ret = calloc(count, size);
     check_fatal(ret != NULL, "calloc returned NULL");
     return (byte *)ret;
 }
@@ -441,28 +440,28 @@ bool s_equal(const char *s1, const char *s2)
     return strcmp(s1, s2) == 0;
 }
 
-bool s_startswithlen(const char *s1, int len1, const char *s2, int len2)
+bool s_startwithlen(const char *s1, int len1, const char *s2, int len2)
 {
     return (len1 < len2) ?
         false :
         memcmp(s1, s2, cast32s32u(len2)) == 0;
 }
 
-bool s_startswith(const char *s1, const char *s2)
+bool s_startwith(const char *s1, const char *s2)
 {
-    return s_startswithlen(s1, strlen32s(s1), s2, strlen32s(s2));
+    return s_startwithlen(s1, strlen32s(s1), s2, strlen32s(s2));
 }
 
-bool s_endswithlen(const char *s1, int len1, const char *s2, int len2)
+bool s_endwithlen(const char *s1, int len1, const char *s2, int len2)
 {
     return (len1 < len2) ?
         false :
         memcmp(s1 + (len1 - len2), s2, cast32s32u(len2)) == 0;
 }
 
-bool s_endswith(const char *s1, const char *s2)
+bool s_endwith(const char *s1, const char *s2)
 {
-    return s_endswithlen(s1, strlen32s(s1), s2, strlen32s(s2));
+    return s_endwithlen(s1, strlen32s(s1), s2, strlen32s(s2));
 }
 
 bool s_contains(const char *s1, const char *s2)
@@ -474,7 +473,11 @@ bool s_isalphanum_paren_or_underscore(const char *s)
 {
     while (*s)
     {
-        if (*s != '_' && *s != '-' && *s != '(' && *s != ')' && !isalnum((unsigned char)*s))
+        if (*s != '_' &&
+            *s != '-' &&
+            *s != '(' &&
+            *s != ')' &&
+            !isalnum((unsigned char)*s))
         {
             return false;
         }
@@ -490,9 +493,9 @@ bool ws_equal(const wchar_t *s1, const wchar_t *s2)
     return wcscmp(s1, s2) == 0;
 }
 
-/* input must consist of only numerals.*/
-bool uintfromstring(const char *s, uint64_t *result)
+bool uintfromstr(const char *s, uint64_t *result)
 {
+    /* input must consist of only numerals.*/
     staticassert(sizeof(unsigned long long) == sizeof(uint64_t));
     *result = 0;
     if (!s || !s[0] || strspn(s, "1234567890") != strlen(s))
@@ -500,7 +503,7 @@ bool uintfromstring(const char *s, uint64_t *result)
         return false;
     }
 
-    /* we must check errno, the number could be greater than UINT64_MAX */
+    /* must check errno in case input is greater than UINT64_MAX */
     errno = 0;
     char *ptrresult = NULL;
     uint64_t res = (uint64_t)strtoull(s, &ptrresult, 10);
@@ -513,9 +516,9 @@ bool uintfromstring(const char *s, uint64_t *result)
     return false;
 }
 
-/* input must consist of only numerals.*/
-bool uintfromstringhex(const char *s, uint64_t *result)
+bool uintfromstrhex(const char *s, uint64_t *result)
 {
+    /* input must consist of only numerals.*/
     staticassert(sizeof(unsigned long long) == sizeof(uint64_t));
     *result = 0;
     if (!s || !s[0] || strspn(s, "1234567890abcdefABCDEF") != strlen(s))
@@ -523,7 +526,7 @@ bool uintfromstringhex(const char *s, uint64_t *result)
         return false;
     }
 
-    /* we must check errno, the number could be greater than UINT64_MAX */
+    /* must check errno in case input is greater than UINT64_MAX */
     errno = 0;
     char *ptrresult = NULL;
     uint64_t res = (uint64_t)strtoull(s, &ptrresult, 16);
@@ -555,13 +558,18 @@ License along with the GNU C Library; see the file COPYING.LIB.  If
 not, write to the Free Software Foundation, Inc., 675 Mass Ave,
 Cambridge, MA 02139, USA.  */
 
-const int FNM_PATHNAME = (1 << 0); /* No wildcard can ever match `/'.  */
-const int FNM_NOESCAPE = (1 << 1); /* Backslashes don't quote special chars.  */
-const int FNM_PERIOD = (1 << 2); /* Leading `.' is matched only explicitly.  */
-const int FNM_NOMATCH = 1;
+/* No wildcard can ever match `/'.  */
+const int FNM_PATHNAME = (1 << 0);
+
+/* Backslashes don't quote special chars. */
+const int FNM_NOESCAPE = (1 << 1);
+
+/* Leading `.' is matched only explicitly. */
+const int FNM_PERIOD = (1 << 2);
 
 /* Match STRING against the filename pattern PATTERN, returning zero if
-it matches, FNM_NOMATCH if not. (removed support for char groups) */
+it matches, FNM_NOMATCH if not. (no support for char groups) */
+const int FNM_NOMATCH = 1;
 static int fnmatch(const char *pattern, const char *string, int flags)
 {
     register const char *p = pattern, *n = string;
@@ -637,7 +645,7 @@ bool fnmatch_simple(const char *pattern, const char *string)
         fnmatch(pattern, string, FNM_NOESCAPE) != FNM_NOMATCH;
 }
 
-void fnmatch_checkvalid(const char *pattern, bstring response)
+void fnmatch_isvalid(const char *pattern, bstring response)
 {
     bstrclear(response);
     if (pattern[0] == '\0')
@@ -658,52 +666,40 @@ void fnmatch_checkvalid(const char *pattern, bstring response)
     }
 }
 
-extern inline bstring bstring_open(void);
-extern inline void bstrclear(bstring s);
-
-const char *bstrlist_view(const bstrlist *list, int index)
+const char *blist_view(const bstrlist *list, int index)
 {
-    check_fatal(list && index >= 0 && index < list->qty, "read out-of-bounds");
+    check_fatal(list && index >= 0 && index < list->qty,
+        "index is out-of-bounds");
+
     return cstr(list->entry[index]);
 }
 
-bstrlist *bstrlist_copy(const bstrlist *list)
+void bstrlist_split(bstrlist *list, const bstring s, char delim)
 {
-    bstrlist *ret = bstrlist_open();
-    bstrlist_alloc(ret, list->qty);
-    for (int i = 0; i < list->qty; i++)
-    {
-        ret->entry[i] = bstrcpy(list->entry[i]);
-    }
-
-    ret->qty = list->qty;
-    return ret;
-}
-
-void bstrlist_split(bstrlist *list, const bstring str, const bstring bdelim)
-{
-    bstrlist_clear(list);
     struct genBstrList blist = {};
-    blist.b = (bstring)str;
+    bstrlist_clear(list);
+    blist.b = (bstring)s;
     blist.bl = list;
-    if (bsplitstrcb(str, bdelim, 0, bscb, &blist) < 0) {
+    if (bsplitcb(s, (byte)delim, 0, bscb, &blist) < 0)
+    {
         bstrlist_clear(list);
     }
 }
 
-void bstrlist_splitcstr(bstrlist *list, const char *s, const char *delim)
+void bstrlist_splitcstr(bstrlist *list, const char *s, char delim)
 {
     bstring bs = bfromcstr(s);
-    bstring bdelim = bfromcstr(delim);
-    bstrlist_split(list, bs, bdelim);
+    bstrlist_split(list, bs, delim);
     bdestroy(bs);
-    bdestroy(bdelim);
 }
 
 int bstrlist_append(bstrlist *list, const bstring bs)
 {
     if (!list)
+    {
         return BSTR_ERR;
+    }
+
     bstrlist_alloc(list, list->qty + 1);
     list->entry[list->qty] = bstrcpy(bs);
     list->qty++;
@@ -713,32 +709,22 @@ int bstrlist_append(bstrlist *list, const bstring bs)
 int bstrlist_appendcstr(bstrlist *list, const char *s)
 {
     if (!list)
+    {
         return BSTR_ERR;
+    }
+
     bstrlist_alloc(list, list->qty + 1);
     list->entry[list->qty] = bfromcstr(s);
     list->qty++;
     return BSTR_OK;
 }
 
-int bstrlist_concat(bstrlist *list, const bstrlist *otherlist)
-{
-    if (!list || !otherlist)
-    {
-        return BSTR_ERR;
-    }
-
-    for (int i = 0; i < otherlist->qty; i++)
-    {
-        bstrlist_append(list, otherlist->entry[i]);
-    }
-
-    return BSTR_OK;
-}
-
 int bstrlist_remove_at(bstrlist *list, int index)
 {
     if (!list || index < 0 || index >= list->qty)
+    {
         return BSTR_ERR;
+    }
 
     bdestroy(list->entry[index]);
     for (int i = index + 1; i < list->qty; i++)
@@ -760,42 +746,48 @@ void bstrlist_clear(bstrlist *list)
     list->qty = 0;
 }
 
-static int qsort_bstrListSort(const void *pt1, const void *pt2)
+static int qsort_bstrlist(const void *p1, const void *p2)
 {
-    bstring *left = (bstring *)pt1;
-    bstring *right = (bstring *)pt2;
-    return strcmp(cstr(*left), cstr(*right));
+    bstring *left = (bstring *)p1;
+    bstring *right = (bstring *)p2;
+    return bstrcmp(*left, *right);
 }
 
 void bstrlist_sort(bstrlist *list)
 {
     qsort(&list->entry[0], (size_t)list->qty,
-        sizeof(list->entry[0]), &qsort_bstrListSort);
+        sizeof(list->entry[0]), &qsort_bstrlist);
 }
 
-int bstring_alloczeros(bstring s, int len)
+int bstring_calloc(bstring s, int len)
 {
     len += 1; /* room for nul char */
     if (BSTR_OK != ballocmin(s, len))
+    {
         return BSTR_ERR;
-    check_fatal(s->mlen >= len, "did not allocate enough space %d %d", s->mlen, len);
+    }
+
+    check_fatal(s->mlen >= len,
+        "failed to allocate %d %d", s->mlen, len);
     memset(&s->data[0], 0, (size_t)s->mlen);
     return BSTR_OK;
 }
 
 void bytes_to_string(const void *b, uint32_t len, bstring s)
 {
-    bstrclear(s);
     char buf[32] = "";
     const byte *bytes = (const byte *)b;
+    bstrclear(s);
     for (uint32_t i = 0; i < len; i++)
     {
-        int lenchars = snprintf(buf, countof(buf) - 1, "%02x", bytes[i]);
-        bcatblk(s, buf, lenchars);
+        int n = snprintf(buf, countof(buf) - 1, "%02x", bytes[i]);
+        bcatblk(s, buf, n);
     }
 }
 
-int bstr_replaceall(bstring s, const char *find, const char *replacewith)
+int bstr_replaceall(bstring s,
+    const char *find,
+    const char *replacewith)
 {
     bstring bfind = bfromcstr(find);
     bstring breplacewith = bfromcstr(replacewith);
@@ -811,48 +803,55 @@ bool bstr_equal(const bstring s1, const bstring s2)
         memcmp(cstr(s1), cstr(s2), cast32s32u(s1->slen)) == 0;
 }
 
-static bool g_debugbreaks_enabled = true;
+static bool g_quiet_warnings = false;
 
 const char *bstr_warnnull_cstr(const bstring s)
 {
-    check_fatal(s && s->data, "Don't use cstr() on a null string");
+    check_fatal(s && s->data, "ptr is null");
     if (strlen32s((const char *)s->data) != s->slen)
     {
-        if (g_debugbreaks_enabled)
+        if (!g_quiet_warnings)
         {
-            alertdialog("Warning: nul byte found. Don't use cstr() for "
-                "binary data because it will truncate.");
+            alert("cstr() not allowed if "
+                "string contains binary data.");
         }
+
         return NULL;
     }
+
     return (const char *)s->data;
 }
 
 const wchar_t *wcstr_warnnull_cstr(const sv_wstr *s)
 {
-    check_fatal(s && s->arr.length, "Don't use cstr() on a null string");
+    check_fatal(s && s->arr.length, "ptr is null");
     for (uint32_t i = 0; i < s->arr.length - 1; i++)
     {
         if (*(const wchar_t *)sv_array_atconst(&s->arr, i) == L'\0')
         {
-            if (g_debugbreaks_enabled)
+            if (!g_quiet_warnings)
             {
-                alertdialog("Warning: nul byte found. Don't use wcstr() for "
-                    "binary data because it will truncate.");
+                alert("wcstr() not allowed if "
+                    "string contains binary data.");
             }
+
             return NULL;
         }
     }
+
     return (const wchar_t *)sv_array_atconst(&s->arr, 0);
 }
 
 sv_wstr sv_wstr_open(uint32_t initial_length)
 {
-    initial_length += 1; /* room for nul char */
-    check_fatal(initial_length >= 1 && initial_length < INT_MAX, "invalid length");
+    initial_length += 1;
+    check_fatal(initial_length >= 1 &&
+        initial_length < INT_MAX,
+        "invalid length");
+
     sv_wstr self = {};
     self.arr = sv_array_open(sizeof(wchar_t), initial_length);
-    sv_array_appendzeros(&self.arr, 1); /* add initial nul char*/
+    sv_array_appendzeros(&self.arr, 1); /* add nul char*/
     return self;
 }
 
@@ -865,36 +864,39 @@ void sv_wstr_close(sv_wstr *self)
     }
 }
 
-void sv_wstr_alloczeros(sv_wstr *self, uint32_t len)
+void sv_wstr_calloc(sv_wstr *self, uint32_t len)
 {
-    len += 1; /* room for nul char */
+    /* first sv_wstr_calloc(),
+    then copy text to buffer,
+    then sv_wstr_truncate() */
+    len += 1;
     sv_wstr_clear(self);
     sv_array_appendzeros(&self->arr, len);
-    /* user should call sv_wstr_truncate after placing text into buffer */
 }
 
 void sv_wstr_truncate(sv_wstr *self, uint32_t len)
 {
-    sv_array_truncatelength(&self->arr, len + 1 /* nul char */);
+    sv_array_truncatelength(&self->arr, len + 1);
     *(wchar_t *)sv_array_at(&self->arr, len) = L'\0';
 }
 
 void sv_wstr_clear(sv_wstr *self)
 {
     sv_array_clear(&self->arr);
-    sv_wstr_append(self, L""); /*adds nul char*/
+    sv_wstr_append(self, L""); /* ensure null term */
 }
 
 void sv_wstr_append(sv_wstr *self, const wchar_t *s)
 {
-    /* erase the old nul term */
+    /* erase old null term */
     if (self->arr.length > 0)
     {
         sv_array_truncatelength(&self->arr, self->arr.length - 1);
     }
 
-    /* add the new data and new nul term */
     sv_array_append(&self->arr, (const byte *)s, wcslen32u(s));
+
+    /* add new null term */
     sv_array_appendzeros(&self->arr, 1);
 }
 
@@ -908,15 +910,15 @@ void sv_wstrlist_clear(sv_array *arr)
     sv_array_truncatelength(arr, 0);
 }
 
-void ask_user_prompt(const char *prompt, bool q_to_cancel, bstring out)
+void ask_user_str(const char *prompt, bool q_to_cancel, bstring out)
 {
     bstrclear(out);
     bool allow_empty = false;
     puts(prompt);
     fflush(stdout);
-    while (1)
+    while (true)
     {
-        char buffer[BUFSIZ] = "";
+        char buffer[BUFSIZ] = { 0 };
         if (fgets(buffer, countof(buffer) - 1, stdin) == NULL ||
             buffer[0] == '\n' ||
             buffer[0] == '\0')
@@ -936,7 +938,8 @@ void ask_user_prompt(const char *prompt, bool q_to_cancel, bstring out)
         {
             /* eat extra characters */
             while (getchar() != '\n');
-            printf("String entered was too long, max of %d characters\n", countof32s(buffer) - 1);
+            printf("This is too long, limit of %d characters\n",
+                countof32s(buffer) - 1);
             continue;
         }
     }
@@ -947,13 +950,13 @@ void ask_user_prompt(const char *prompt, bool q_to_cancel, bstring out)
     }
 }
 
-bool ask_user_yesno(const char *prompt)
+bool ask_user(const char *prompt)
 {
     bstring result = bstring_open();
     bool ret = false;
-    while (1)
+    while (true)
     {
-        ask_user_prompt(prompt, false, result);
+        ask_user_str(prompt, false, result);
         if (s_equal("y", cstr(result)))
         {
             ret = true;
@@ -965,6 +968,7 @@ bool ask_user_yesno(const char *prompt)
             break;
         }
     }
+
     bdestroy(result);
     return ret;
 }
@@ -976,8 +980,10 @@ uint32_t ask_user_int(const char *prompt, int valmin, int valmax)
     while (true)
     {
         uint64_t n = 0;
-        ask_user_prompt(prompt, false, userinput);
-        if (uintfromstring(cstr(userinput), &n) && n >= valmin && n <= valmax)
+        ask_user_str(prompt, false, userinput);
+        if (uintfromstr(cstr(userinput), &n) &&
+            n >= valmin &&
+            n <= valmax)
         {
             ret = cast64u32u(n);
             break;
@@ -987,17 +993,18 @@ uint32_t ask_user_int(const char *prompt, int valmin, int valmax)
             printf("Must be between %d and %d.\n", valmin, valmax);
         }
     }
+
     bdestroy(userinput);
     return ret;
 }
 
-void alertdialog(const char *message)
+void alert(const char *message)
 {
     fprintf(stderr, "%s\nPress Enter to continue...\n", message);
     (void)getchar();
 }
 
-int ui_numbered_menu_pick_from_list(const char *msg,
+int menu_choose(const char *msg,
     const bstrlist *list, const char *format_each,
     const char *additionalopt1, const char *additionalopt2)
 {
@@ -1011,7 +1018,7 @@ int ui_numbered_menu_pick_from_list(const char *msg,
         int listindex = 0;
         while (listindex < list->qty)
         {
-            printf(spec, listindex + 1, bstrlist_view(list, listindex));
+            printf(spec, listindex + 1, blist_view(list, listindex));
             ++listindex;
         }
         if (additionalopt1)
@@ -1023,21 +1030,25 @@ int ui_numbered_menu_pick_from_list(const char *msg,
             printf("%d) %s\n", ++listindex, additionalopt2);
         }
 
-        ask_user_prompt("\n\nPlease type a number from the list above and press Enter:",
-            false, userinput);
+        ask_user_str("\n\nPlease type a number from the list above "
+            "and press Enter:", false, userinput);
 
         uint64_t n = 0;
-        if (uintfromstring(cstr(userinput), &n) && n >= 1 && n <= listindex)
+        if (uintfromstr(cstr(userinput), &n) &&
+            n >= 1 &&
+            n <= listindex)
         {
             ret = cast64u32s(n - 1);
             break;
         }
     }
+
     bdestroy(userinput);
     return ret;
 }
 
-int ui_numbered_menu_pick_from_long_list(const bstrlist *list, int groupsize)
+int menu_choose_long(const bstrlist *list,
+    int groupsize)
 {
     int ret = -1;
     int ngroups = (list->qty / groupsize) + 1;
@@ -1046,13 +1057,15 @@ int ui_numbered_menu_pick_from_long_list(const bstrlist *list, int groupsize)
     for (int i = 0; i < ngroups; i++)
     {
         char buf[BUFSIZ] = { 0 };
-        snprintf(buf, countof(buf) - 1, "%d to %d", (i * groupsize)+1, ((i + 1) * groupsize));
+        snprintf(buf, countof(buf) - 1, "%d to %d",
+            (i * groupsize) + 1,
+            ((i + 1) * groupsize));
         bstrlist_appendcstr(listgroups, buf);
     }
 
     while (true)
     {
-        int chosengroup = ui_numbered_menu_pick_from_list("", listgroups, NULL, "Back", NULL);
+        int chosengroup = menu_choose("", listgroups, NULL, "Back", NULL);
         if (chosengroup >= listgroups->qty)
         {
             break;
@@ -1063,14 +1076,13 @@ int ui_numbered_menu_pick_from_long_list(const bstrlist *list, int groupsize)
             i < chosengroup * groupsize + groupsize && i < list->qty;
             i++)
         {
-            const char *subitem = bstrlist_view(list, i);
-            bstrlist_appendcstr(listsubgroup, subitem);
+            bstrlist_appendcstr(listsubgroup, blist_view(list, i));
         }
 
-        int chosensubitem = ui_numbered_menu_pick_from_list("", listsubgroup, NULL, "Back", NULL);
-        if (chosensubitem < listsubgroup->qty)
+        int chosen = menu_choose("", listsubgroup, NULL, "Back", NULL);
+        if (chosen < listsubgroup->qty)
         {
-            ret = chosengroup * groupsize + chosensubitem;
+            ret = chosengroup * groupsize + chosen;
             break;
         }
     }
@@ -1080,8 +1092,10 @@ int ui_numbered_menu_pick_from_long_list(const bstrlist *list, int groupsize)
     return ret;
 }
 
-check_result ui_numbered_menu_show(const char *msg, const ui_numbered_menu_spec_entry *entries,
-    struct svdp_application *app, FnMenuGetNextMenu fngetnextmenu)
+check_result menu_choose_action(const char *msg,
+    const menu_action_entry *entries,
+    struct sv_app *app,
+    FnMenuGetNextMenu fngetnextmenu)
 {
     bstring userinput = bstring_open();
 
@@ -1095,7 +1109,7 @@ check_result ui_numbered_menu_show(const char *msg, const ui_numbered_menu_spec_
         os_clr_console();
         printf("%s\n", msg);
         uint64_t number = 1;
-        const ui_numbered_menu_spec_entry *iter = entries;
+        const menu_action_entry *iter = entries;
         while (iter->callback || iter->message)
         {
             printf("%llu) %s\n", castull(number), iter->message);
@@ -1104,12 +1118,12 @@ check_result ui_numbered_menu_show(const char *msg, const ui_numbered_menu_spec_
         }
 
         uint64_t n = 0;
-        ask_user_prompt("\n\nPlease type a number from the list above and press Enter:",
-            false, userinput);
+        ask_user_str("\n\nPlease type a number from the list above "
+            "and press Enter:", false, userinput);
 
-        if (uintfromstring(cstr(userinput), &n) && n >= 1 && n < number)
+        if (uintfromstr(cstr(userinput), &n) && n >= 1 && n < number)
         {
-            const ui_numbered_menu_spec_entry *action = entries + n - 1;
+            const menu_action_entry *action = entries + n - 1;
             if (action->callback)
             {
                 os_clr_console();
@@ -1117,7 +1131,7 @@ check_result ui_numbered_menu_show(const char *msg, const ui_numbered_menu_spec_
                 if (result.code)
                 {
                     printf("\n\nMessage: %s", cstr(result.msg));
-                    alertdialog("");
+                    alert("");
                     sv_result_close(&result);
                 }
 
@@ -1141,19 +1155,23 @@ void sv_log_register_active_logger(sv_log *logger)
 }
 
 static check_result sv_log_start_attach_file(const char *dir,
-    uint32_t number, sv_file *file, int64_t *start_of_day)
+    uint32_t number,
+    sv_file *file,
+    int64_t *start_of_day)
 {
     sv_result currenterr = {};
     bstring filename = bstring_open();
     appendnumbertofilename(dir, "log", ".txt", number, filename);
     sv_result result = sv_file_open(file, cstr(filename),
-        /* the 'e' means to pass O_CLOEXEC so that the fd is closed on calls to exec. */
+        /* the 'e' means to pass O_CLOEXEC
+        so that the fd is closed on calls to exec. */
         islinux ? "abe" : "ab");
+
     if (result.code)
     {
-        check_b(0, "We were not able to start logging. Please check that GlacialBackup "
-            "Backup Software is not already running, and try again.\n(Details: could not access %s).",
-            cstr(filename));
+        check_b(0, "We were not able to start logging. Please check "
+            "that GlacialBackup is not already running, and try again."
+            "\n(Details: could not access %s).", cstr(filename));
     }
 
     /* get the start of the day in seconds */
@@ -1166,7 +1184,9 @@ static check_result sv_log_start_attach_file(const char *dir,
 
     /* write time */
     fprintf(file->file, nativenewline "%04d/%02d/%02d",
-        tmstruct->tm_year + 1900, tmstruct->tm_mon + 1, tmstruct->tm_mday);
+        tmstruct->tm_year + 1900,
+        tmstruct->tm_mon + 1,
+        tmstruct->tm_mday);
 
 cleanup:
     sv_result_close(&result);
@@ -1181,12 +1201,16 @@ check_result sv_log_open(sv_log *self, const char *dir)
     self->dir = bfromcstr(dir);
     self->cap_filesize = 8 * 1024 * 1024;
 
-    check(readlatestnumberfromfilename(dir, "log", ".txt", &self->logfilenumber));
+    check(readlatestnumberfromfilename(dir, "log", ".txt",
+        &self->logfilenumber));
     if (self->logfilenumber == 0)
         self->logfilenumber = 1;
 
     check(sv_log_start_attach_file(
-        cstr(self->dir), self->logfilenumber, &self->logfile, &self->start_of_day));
+        cstr(self->dir),
+        self->logfilenumber,
+        &self->logfile,
+        &self->start_of_day));
 
 cleanup:
     return currenterr;
@@ -1207,29 +1231,40 @@ FILE *sv_log_currentFile()
     return p_sv_log ? p_sv_log->logfile.file : NULL;
 }
 
-void sv_log_addnewlinetime(FILE *f, int64_t start_of_day, int64_t totalseconds, long milliseconds)
+void sv_log_addnewlinetime(FILE *f,
+    int64_t start_of_day,
+    int64_t totalseconds,
+    long milliseconds)
 {
     int64_t seconds_since_midnight = totalseconds - start_of_day;
     int64_t hours = seconds_since_midnight / (60 * 60);
     int64_t secondspasthour = seconds_since_midnight - hours * 60 * 60;
     int64_t minutes = (secondspasthour) / 60;
     int64_t seconds = secondspasthour - minutes * 60;
-    fprintf(f, nativenewline "%02d:%02d:%02d:%03d ", (int)hours, (int)minutes, /* allow cast */
+    fprintf(f, nativenewline "%02d:%02d:%02d:%03d ",
+        (int)hours, (int)minutes, /* allow cast */
         (int)seconds, (int)milliseconds); /* allow cast */
 }
 
+/* we'll check the filesize every 16 log entries */
+const uint32_t sv_log_check_size_period = 16;
+
 static void sv_log_check_switch_nextfile(sv_log *self)
 {
+    /* start a new log file after size reaches 8mb */
     self->counter++;
-    if ((self->counter & 0xf) == 0) /* check filesize whenever counter%16==0 */
+    if ((self->counter % sv_log_check_size_period) == 0)
     {
         fseek(self->logfile.file, 0, SEEK_END);
         if (ftell(self->logfile.file) > self->cap_filesize)
         {
             sv_file next_file = {};
             int64_t next_start_of_day = 0;
-            sv_result try_switch_file = sv_log_start_attach_file(cstr(self->dir),
-                self->logfilenumber + 1, &next_file, &next_start_of_day);
+            sv_result try_switch_file = sv_log_start_attach_file(
+                cstr(self->dir),
+                self->logfilenumber + 1,
+                &next_file,
+                &next_start_of_day);
 
             if (try_switch_file.code == 0)
             {
@@ -1252,10 +1287,13 @@ static void sv_log_addNewLine()
     int64_t seconds;
     int32_t milliseconds;
     os_clock_gettime(&seconds, &milliseconds);
-    sv_log_addnewlinetime(sv_log_currentFile(), p_sv_log->start_of_day, seconds, milliseconds);
+    sv_log_addnewlinetime(sv_log_currentFile(),
+        p_sv_log->start_of_day,
+        seconds,
+        milliseconds);
 }
 
-void sv_log_writeline(const char *s)
+void sv_log_write(const char *s)
 {
     if (sv_log_currentFile())
     {
@@ -1264,7 +1302,7 @@ void sv_log_writeline(const char *s)
     }
 }
 
-void sv_log_writelines(const char *s1, const char *s2)
+void sv_log_writes(const char *s1, const char *s2)
 {
     if (sv_log_currentFile())
     {
@@ -1284,7 +1322,7 @@ void sv_log_flush()
 }
 
 #if !CheckBformatStrings
-void sv_log_writefmt(const char *fmt, ...)
+void sv_log_fmt(const char *fmt, ...)
 {
     if (sv_log_currentFile())
     {
@@ -1297,9 +1335,9 @@ void sv_log_writefmt(const char *fmt, ...)
 }
 #endif
 
-void set_debugbreaks_enabled(bool b)
+void quiet_warnings(bool b)
 {
-    g_debugbreaks_enabled = b;
+    g_quiet_warnings = b;
 }
 
 void check_b_hit(void)
@@ -1307,7 +1345,7 @@ void check_b_hit(void)
     fflush(stdout);
     fflush(stderr);
     sv_log_flush();
-    if (g_debugbreaks_enabled)
+    if (!g_quiet_warnings)
     {
         debugbreak();
     }
@@ -1316,7 +1354,7 @@ void check_b_hit(void)
 void debugbreak(void)
 {
 #if _DEBUG
-    alertdialog("a recoverable error occurred, attach debugger to investigate.");
+    alert("a recoverable error occurred, attach debugger to investigate.");
     DEBUGBREAK();
 #endif
 }
@@ -1326,22 +1364,25 @@ void die(void)
     fflush(stdout);
     fflush(stderr);
     sv_log_flush();
-    alertdialog("We will now exit.");
+    alert("We will now exit.");
     debugbreak();
     exit(1);
 }
 
-void check_warn_impl(sv_result res, const char *msg, const char *function, erespondtoerr respondtoerr)
+void check_warn_impl(sv_result res,
+    const char *msg,
+    const char *function,
+    erespondtoerr respondtoerr)
 {
     if (res.code)
     {
         log_b(0, "%s %s", function, cstr(res.msg));
         sv_log_flush();
 
-        if (g_debugbreaks_enabled)
+        if (!g_quiet_warnings)
         {
             printf("%s\n%s\n", msg ? msg : "", cstr(res.msg));
-            alertdialog("");
+            alert("");
         }
 
         sv_result_close(&res);
@@ -1352,11 +1393,15 @@ void check_warn_impl(sv_result res, const char *msg, const char *function, eresp
     }
 }
 
-void log_errno_impl(const char *exp, int nerrno, const char *context[4], const char *fn, int lineno)
+void log_errno_impl(const char *exp,
+    int nerrno,
+    const char *context[4],
+    const char *fn,
+    int lineno)
 {
     char errorname[BUFSIZ] = { 0 };
     os_errno_to_buffer(nerrno, errorname, countof(errorname));
-    sv_log_writefmt("'%s' returned errno=%s(%d) in %s line %d %s %s %s %s",
+    sv_log_fmt("'%s' returned errno=%s(%d) in %s line %d %s %s %s %s",
         exp, errorname, nerrno, fn, lineno,
         context[0] ? context[0] : "",
         context[1] ? context[1] : "",
@@ -1365,7 +1410,10 @@ void log_errno_impl(const char *exp, int nerrno, const char *context[4], const c
 }
 
 void check_errno_impl(sv_result *currenterr,
-    const char *exp, int nerrno, const char *context[4], const char *fn)
+    const char *exp,
+    int nerrno,
+    const char *context[4],
+    const char *fn)
 {
     char errorname[BUFSIZ] = { 0 };
     os_errno_to_buffer(nerrno, errorname, countof(errorname));
@@ -1381,11 +1429,14 @@ void check_errno_impl(sv_result *currenterr,
 }
 
 void log_errwin32_impl(const char *exp,
-    unsigned long nerrno, const char *context[4], const char *fn, int lineno)
+    unsigned long nerrno,
+    const char *context[4],
+    const char *fn,
+    int lineno)
 {
     char errorname[BUFSIZ] = { 0 };
     os_win32err_to_buffer(nerrno, errorname, countof(errorname));
-    sv_log_writefmt("'%s' returned errno=%s(%d) in %s line %d, %s %s %s %s",
+    sv_log_fmt("'%s' returned errno=%s(%d) in %s line %d, %s %s %s %s",
         exp, errorname, nerrno, fn, lineno,
         context[0] ? context[0] : "",
         context[1] ? context[1] : "",
@@ -1394,7 +1445,10 @@ void log_errwin32_impl(const char *exp,
 }
 
 void check_errwin32_impl(sv_result *currenterr,
-    const char *exp, unsigned long nerrno, const char *context[4], const char *fn)
+    const char *exp,
+    unsigned long nerrno,
+    const char *context[4],
+    const char *fn)
 {
     char errorname[BUFSIZ] = { 0 };
     os_win32err_to_buffer(nerrno, errorname, countof(errorname));
@@ -1410,58 +1464,67 @@ void check_errwin32_impl(sv_result *currenterr,
 }
 
 int _ = 0;
-bstring PlaceholderCheckFormatStrings = NULL;
 
 /* from 1 to "/path/file001.txt" */
 void appendnumbertofilename(const char *dir,
-    const char *prefix, const char *suffix, uint32_t number, bstring out)
+    const char *prefix,
+    const char *suffix,
+    uint32_t number,
+    bstring out)
 {
-    bassignformat(out, "%s%s%s%05d%s", dir, pathsep, prefix, number, suffix);
+    bsetfmt(out, "%s%s%s%05d%s", dir, pathsep, prefix, number, suffix);
 }
 
 /* from "/path/file001.txt" to 1. */
-uint32_t readnumberfromfilename(bstring tmp,
-    const char *prefix, const char *suffix, const char *candidate)
+uint32_t readnumberfromfilename(const char *prefix,
+    const char *suffix,
+    const char *candidate)
 {
-    int lenprefix = strlen32s(prefix), lensuffix = strlen32s(suffix), candlen = strlen32s(candidate);
-    if (s_startswithlen(candidate, candlen, prefix, lenprefix) &&
-        s_endswithlen(candidate, candlen, suffix, lensuffix))
+    bstring tmp = bstring_open();
+    int lenprefix = strlen32s(prefix);
+    int lensuffix = strlen32s(suffix);
+    int lencandidate = strlen32s(candidate);
+    if (s_startwithlen(candidate, lencandidate, prefix, lenprefix) &&
+        s_endwithlen(candidate, lencandidate, suffix, lensuffix))
     {
         /* get chars between the template and extension. */
-        int len = candlen - (lensuffix + lenprefix);
+        int len = lencandidate - (lensuffix + lenprefix);
         bassignblk(tmp, candidate + lenprefix, len);
         uint64_t n = 0;
-        if (blength(tmp) > 0 && uintfromstring(cstr(tmp), &n))
+        if (blength(tmp) > 0 && uintfromstr(cstr(tmp), &n))
         {
+            bdestroy(tmp);
             return cast64u32u(n);
         }
     }
+
+    bdestroy(tmp);
     return 0;
 }
 
 /* from "/path/file001.txt" to 1. */
 check_result readlatestnumberfromfilename(const char *dir,
-    const char *prefix, const char *suffix, uint32_t *latestnumber)
+    const char *prefix,
+    const char *suffix,
+    uint32_t *latestnumber)
 {
     *latestnumber = 0;
     sv_result currenterr = {};
     bstring fullprefix = bformat("%s%s%s", dir, pathsep, prefix);
-    bstring tmp = bstring_open();
     bstrlist *files_seen = bstrlist_open();
     check_b(os_dir_exists(dir), "dir not found %s", dir);
     check(os_listfiles(dir, files_seen, false));
     for (int i = 0; i < files_seen->qty; i++)
     {
-        /* don't use string sorting, which would put 02 after 000123456 */
+        /* don't use strcmp which would sort 02 after 01234 */
         uint32_t number = readnumberfromfilename(
-            tmp, cstr(fullprefix), suffix, bstrlist_view(files_seen, i));
+            cstr(fullprefix), suffix, blist_view(files_seen, i));
 
         *latestnumber = MAX(*latestnumber, number);
     }
 
 cleanup:
     bdestroy(fullprefix);
-    bdestroy(tmp);
     bstrlist_close(files_seen);
     return currenterr;
 }

@@ -2771,34 +2771,11 @@ int bsplitscb(const_bstring str, const_bstring splitStr, int pos,
 *  cb function destroys str, then it *must* return with a negative value,
 *  otherwise bsplitscb will continue in an undefined manner.
 */
-int bsplitstrcb(const_bstring str, const_bstring splitStr, int pos,
-    int(*cb) (void * parm, int ofs, int len), void * parm) {
-    int i, p, ret;
 
-    if (cb == NULL || str == NULL || pos < 0 || pos > str->slen
-        || splitStr == NULL || splitStr->slen < 0) return BSTR_ERR;
-
-    if (0 == splitStr->slen) {
-        for (i = pos; i < str->slen; i++) {
-            if ((ret = cb(parm, i, 1)) < 0) return ret;
-        }
-        return BSTR_OK;
-    }
-
-    if (splitStr->slen == 1)
-        return bsplitcb(str, splitStr->data[0], pos, cb, parm);
-
-    for (i = p = pos; i <= str->slen - splitStr->slen; i++) {
-        if (0 == bstr__memcmp(splitStr->data, str->data + i,
-            splitStr->slen)) {
-            if ((ret = cb(parm, p, i - p)) < 0) return ret;
-            i += splitStr->slen;
-            p = i;
-        }
-    }
-    if ((ret = cb(parm, p, str->slen - p)) < 0) return ret;
-    return BSTR_OK;
-}
+/* 
+see pull request at
+https://github.com/websnarf/bstrlib/pull/14
+*/
 
 int bscb(void * parm, int ofs, int len) {
     struct genBstrList * g = (struct genBstrList *) parm;
@@ -2857,28 +2834,6 @@ struct bstrList * bsplit(const_bstring str, unsigned char splitChar) {
 *  Create an array of sequential substrings from str divided by the entire
 *  substring splitStr.
 */
-struct bstrList * bsplitstr(const_bstring str, const_bstring splitStr) {
-    struct genBstrList g;
-
-    if (str == NULL || str->data == NULL || str->slen < 0) return NULL;
-
-    g.bl = (struct bstrList *) bstr__alloc(sizeof(struct bstrList));
-    if (g.bl == NULL) return NULL;
-    g.bl->mlen = 4;
-    g.bl->entry = (bstring *)bstr__alloc(g.bl->mlen * sizeof(bstring));
-    if (NULL == g.bl->entry) {
-        bstr__free(g.bl);
-        return NULL;
-    }
-
-    g.b = (bstring)str;
-    g.bl->qty = 0;
-    if (bsplitstrcb(str, splitStr, 0, bscb, &g) < 0) {
-        bstrListDestroy(g.bl);
-        return NULL;
-    }
-    return g.bl;
-}
 
 /*  struct bstrList * bsplits (const_bstring str, bstring splitStr)
 *
@@ -3000,14 +2955,14 @@ int bformata(bstring b, const char * fmt, ...) {
     return r;
 }
 
-/*  int bassignformat (bstring b, const char * fmt, ...)
+/*  int bsetfmt (bstring b, const char * fmt, ...)
 *
 *  After the first parameter, it takes the same parameters as printf (), but
 *  rather than outputting results to stdio, it outputs the results to
 *  the bstring parameter b. Note that if there is an early generation of a
 *  '\0' character, the bstring will be truncated to this end point.
 */
-int bassignformat(bstring b, const char * fmt, ...) {
+int bsetfmt(bstring b, const char * fmt, ...) {
     va_list arglist;
     bstring buff;
     int n, r;

@@ -119,14 +119,11 @@ extern "C" {
     /* String split and join functions */
     extern struct bstrList * bsplit(const_bstring str, unsigned char splitChar);
     extern struct bstrList * bsplits(const_bstring str, const_bstring splitStr);
-    extern struct bstrList * bsplitstr(const_bstring str, const_bstring splitStr);
     extern bstring bjoin(const struct bstrList * bl, const_bstring sep);
     extern bstring bjoinblk(const struct bstrList * bl, const void * s, int len);
     extern int bsplitcb(const_bstring str, unsigned char splitChar, int pos,
         int(*cb) (void * parm, int ofs, int len), void * parm);
     extern int bsplitscb(const_bstring str, const_bstring splitStr, int pos,
-        int(*cb) (void * parm, int ofs, int len), void * parm);
-    extern int bsplitstrcb(const_bstring str, const_bstring splitStr, int pos,
         int(*cb) (void * parm, int ofs, int len), void * parm);
 
     /* Miscellaneous functions */
@@ -140,7 +137,7 @@ extern "C" {
 #if !defined (BSTRLIB_NOVSNP)
     extern bstring bformat(const char * fmt, ...);
     extern int bformata(bstring b, const char * fmt, ...);
-    extern int bassignformat(bstring b, const char * fmt, ...);
+    extern int bsetfmt(bstring b, const char * fmt, ...);
     extern int bvcformata(bstring b, int count, const char * fmt, va_list arglist);
 
 #define bvformata(ret, b, fmt, lastarg) { \

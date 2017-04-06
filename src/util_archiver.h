@@ -1,4 +1,6 @@
 /*
+util_archiver.h
+
 GlacialBackup is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -16,79 +18,88 @@ GNU General Public License for more details.
 #include "util_os.h"
 #include "lib_sphash.h"
 
-typedef struct svdp_archiver {
-    bstring path_intermediate_archives;
+typedef struct ar_util {
+    bstring tar_binary;
+    bstring xz_binary;
+    bstring audiotag_binary;
+    bstrlist *list;
+    bstring tmp_arg_tar;
+    bstring tmp_inner_name;
+    bstring tmp_combined;
+    bstring tmp_ascii;
+    bstring tmp_results;
+    bstring tmp_filename;
+    bstring tmp_xz_name;
+} ar_util;
+
+void ar_util_close(ar_util *self);
+ar_util ar_util_open();
+check_result ar_util_add(ar_util *self,
+    const char *tarpath,
+    const char *inputpath,
+    const char *namewithin,
+    uint64_t inputsize);
+check_result ar_util_verify(ar_util *self,
+    const char *tarpath,
+    const bstrlist *expectedcontents,
+    const sv_array *expectedsizes);
+check_result ar_util_extract_overwrite(ar_util *self,
+    const char *tarpath,
+    const char *namewithin,
+    const char *tmpdir,
+    bstring extracted_to);
+check_result ar_util_delete(ar_util *self,
+    const char *archive,
+    const char *dir_tmp,
+    const char *dir_tmp_unarchived,
+    const sv_array *contentids);
+check_result ar_util_xz_add(ar_util *self,
+    const char *inputpath,
+    const char *destpath);
+check_result ar_util_xz_verify(ar_util *self,
+    const char *archivepath);
+check_result ar_util_xz_extract_overwrite(ar_util *self,
+    const char *archivepath,
+    const char *destination);
+
+typedef struct ar_manager {
+    ar_util ar;
+    bstring path_working;
     bstring path_staging;
     bstring path_readytoupload;
-    bstring path_archiver_binary;
-    bstring path_compression_binary;
-    bstring path_audiometadata_binary;
     uint32_t collectionid;
-    int32_t limitfilesperarchive;
-    uint64_t target_archive_size_bytes;
-    bstring encryption;
+    int32_t limitperarchive;
+    uint64_t target_archive_size;
     bstring currentarchive;
-    uint32_t currentarchivenumber;
-    sv_file friendlyfilenamesfile;
-    sv_array currentarchive_sizes;
-    bstrlist *currentarchive_contents;
-    bstrlist *tmp_list;
-    bstring tmp_arg_input;
-    bstring tmp_arg_encryption;
-    bstring tmp_argscombined;
-    bstring tmp_resultstring;
-    bstring tmp_parentdir;
-    bstring tmp_filename;
-    bool can_add_to_tar_directly;
-} svdp_archiver;
+    uint32_t currentarchivenum;
+    sv_file namestextfile;
+    sv_array current_sizes;
+    bstrlist *current_names;
+} ar_manager;
+
+void ar_manager_close(ar_manager *self);
+check_result ar_manager_begin(ar_manager *self);
+check_result ar_manager_finish(ar_manager *self);
+check_result ar_manager_advance_to_next(ar_manager *self);
+check_result ar_manager_restore(ar_manager *self,
+    const char *archive,
+    uint64_t contentid,
+    const char *working_dir_archived,
+    const char *dest);
+check_result ar_manager_add(ar_manager *self,
+    const char *pathinput,
+    bool iscompressed,
+    uint64_t contentsid,
+    uint32_t *archivenumber,
+    uint64_t *compressedsize);
+check_result ar_manager_open(ar_manager *self,
+    const char *pathapp,
+    const char *grpname,
+    uint32_t collectionid,
+    uint32_t archivesize);
 
 typedef struct hash256 {
     uint64_t data[4];
 } hash256;
-
-check_result svdp_archiver_open(svdp_archiver *self, const char *pathapp, const char *groupname,
-    uint32_t currentcollectionid, uint32_t targetsizemb, const char *encryption);
-void svdp_archiver_close(svdp_archiver *self);
-check_result svdp_archiver_addfile(svdp_archiver *self, const char *pathinput, bool iscompressed,
-    uint64_t contentsid, uint32_t *archivenumber, uint64_t *compressedsize);
-check_result svdp_archiver_beginarchiving(svdp_archiver *self);
-check_result svdp_archiver_finisharchiving(svdp_archiver *self);
-check_result svdp_archiver_delete_from_archive(svdp_archiver *self, const char *archive,
-    const char *dir_tmp_unarchived, const sv_array *contentids);
-check_result svdp_archiver_restore_from_archive(svdp_archiver *self, const char *archive,
-    uint64_t contentid, const char *workingdir, const char *subworkingdir, const char *dest);
-check_result svdp_archiver_tar_list_string_testsonly(svdp_archiver *self, const char *archive,
-    bstrlist *results, const char *subworkingdir);
-check_result svdp_archiver_verify_has_one_item(svdp_archiver *self, const char *path7zfile,
-    const char *inputfilename, const char *encryption);
-
-check_result svdp_tar_add(svdp_archiver *self, const char *tarname, const char *inputfile);
-check_result svdp_tar_add_with_custom_name(svdp_archiver *self, const char *tarname,
-    const char *inputfile, const char *namewithinarchive);
-check_result svdp_tar_verify_contents(svdp_archiver *self, const char *archive,
-    bstrlist *expectedcontents, sv_array *expectedsizes);
-check_result svdp_7z_add(svdp_archiver *self, const char *path7zfile, const char *inputfilepath,
-    bool is_compressed);
-check_result svdp_7z_extract_overwrite_ok(svdp_archiver *self, const char *archive,
-    const char *encryption, const char *internalarchivepath, const char *outputdir);
-check_result svdp_archiver_7z_list_string_testsonly(svdp_archiver *self, const char *archive,
-    bstrlist *results);
-check_result svdp_archiver_7z_list_testsonly(svdp_archiver *self, const char *archive,
-    bstrlist *paths, sv_array *sizes, sv_array *crcs, sv_array *methods);
-
-extern const hash256 hash256zeros;
-inline void hash256tostr(const hash256 *h1, bstring s)
-{
-    bassignformat(s, "%llx %llx %llx %llx",
-        castull(h1->data[0]), castull(h1->data[1]), castull(h1->data[2]), castull(h1->data[3]));
-}
-
-inline bool hash256eq(const hash256 *h1, const hash256 *h2)
-{
-    return h1->data[0] == h2->data[0] &&
-        h1->data[1] == h2->data[1] &&
-        h1->data[2] == h2->data[2] &&
-        h1->data[3] == h2->data[3];
-}
 
 #endif

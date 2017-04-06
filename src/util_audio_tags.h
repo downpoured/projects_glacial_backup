@@ -1,4 +1,6 @@
 /*
+util_audio_tags.h
+
 GlacialBackup is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -23,30 +25,53 @@ typedef struct sv_hasher {
     const char *loggingcontext;
 } sv_hasher;
 
-check_result checkexternaltoolspresent(svdp_archiver *archiver, uint32_t separatemetadata);
-bool readhash(const bstring getoutput, hash256 *out_hash);
-
-typedef enum knownfileextension
+typedef enum efiletype
 {
-    knownfileextension_none = 0,
-    knownfileextension_ogg,
-    knownfileextension_mp3,
-    knownfileextension_mp4,
-    knownfileextension_m4a,
-    knownfileextension_flac,
-    knownfileextension_otherbinary,
-} knownfileextension;
+    filetype_none = 0,
+    filetype_ogg,
+    filetype_mp3,
+    filetype_mp4,
+    filetype_m4a,
+    filetype_flac,
+    filetype_binary,
+} efiletype;
 
 extern uint64_t SvdpHashSeed1;
 extern uint64_t SvdpHashSeed2;
-check_result get_file_checksum_string(const char *filepath, bstring s);
-check_result writevalidmp3(const char *path, bool changeid3, bool changeid3length, bool changedata);
-knownfileextension get_file_extension_info(const char *filename, int len);
-void adjustfilesize_if_audio_file(uint32_t separatemetadata, knownfileextension ext,
-    uint64_t size_from_disk, uint64_t *outputsize);
-check_result hash_of_file(os_exclusivefilehandle *handle, uint32_t separateaudio,
-    knownfileextension ext, const char *metadatabinary, hash256 *out_hash, uint32_t *outcrc32);
-check_result checkffmpegworksasexpected(svdp_archiver *archiver,
-    uint32_t separatemetadata, const char *tmpdir);
+efiletype get_file_extension_info(const char *filename, int len);
+void adjustfilesize_if_audio_file(uint32_t separatemetadata,
+    efiletype ext,
+    uint64_t size_from_disk,
+    uint64_t *outputsize);
+check_result checkbinarypaths(ar_util *ar,
+    uint32_t separatemetadata,
+    const char *temp_path);
+bool readhash(const char *stdout_from_proc,
+    hash256 *out_hash);
+check_result hash_of_file(os_lockedfilehandle *handle,
+    uint32_t separateaudio,
+    efiletype ext,
+    const char *metadatabinary,
+    hash256 *out_hash,
+    uint32_t *outcrc32);
+check_result get_file_checksum_string(const char *filepath,
+    bstring s);
+check_result check_ffmpeg_works(ar_util *ar,
+    uint32_t separatemetadata,
+    const char *tmpdir);
+check_result writevalidmp3(const char *path,
+    bool changeid3,
+    bool changeid3length,
+    bool changedata);
+
+extern const hash256 hash256zeros;
+inline void hash256tostr(const hash256 *h1, bstring s)
+{
+    bsetfmt(s, "%llx %llx %llx %llx",
+        castull(h1->data[0]),
+        castull(h1->data[1]),
+        castull(h1->data[2]),
+        castull(h1->data[3]));
+}
 
 #endif

@@ -10,9 +10,15 @@
 # GNU General Public License for more details.
 
 CC=gcc
-CFLAGS=-c -Wall  -Werror -std=c11 -Wno-unused-label -Wno-unused-function -Wconversion -D_GNU_SOURCE 
-LDFLAGS=
-SOURCES=dbaccess.c lib_bstrlib.c lib_sphash.c lib_sqlite3.c operations.c main.c tests_sv.c tests_utils.c user_config.c util.c util_archiver.c util_audio_tags.c util_os.c 
+CFLAGS=-c -Wall  -Werror -std=c11 -Wno-format-zero-length -Wno-unused-label -Wno-unused-function -Wconversion -D_GNU_SOURCE 
+LDFLAGS=-lm
+SOURCES=dbaccess.c lib_bstrlib.c lib_sphash.c lib_sqlite3.c operations.c  \
+user_config.c util.c util_archiver.c util_audio_tags.c user_interface.c util_os.c \
+tests/tests.c tests/tests.h tests/tests_array_utils.c tests/tests_dbaccess.c tests/tests_operations.c \
+tests/tests_os.c tests/tests_userconfig.c tests/tests_util.c tests/tests_util_archiver.c \
+tests/tests_util_audio_tags.c tests/whole_db.c tests/whole_operation.c
+
+
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=glacial_backup.out
 
@@ -24,13 +30,13 @@ ship: all
 all: $(SOURCES) $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS) 
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 	
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@
 
 clean:
 	rm *.o
+	rm tests/*.o
 	rm glacial_backup.out
-
 

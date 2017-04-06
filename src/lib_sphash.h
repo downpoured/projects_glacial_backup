@@ -12,7 +12,7 @@
 //                (agiz@github)
 //   Oct 05 2013: Adjusted to SpookyV2, better formatting by Arno Wagner 
 //                arno@wagner.name
-//	 
+//
 // Up to 3 bytes/cycle for long messages.  Reasonably fast for short messages.
 // All 1 or 2 bit deltas achieve avalanche within 1% bias per output bit.
 //
@@ -36,9 +36,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define SC_NUMVARS		12
-#define SC_BLOCKSIZE	(8 * SC_NUMVARS)
-#define SC_BUFSIZE		(2 * SC_BLOCKSIZE)
+#define SC_NUMVARS        12
+#define SC_BLOCKSIZE    (8 * SC_NUMVARS)
+#define SC_BUFSIZE        (2 * SC_BLOCKSIZE)
 
 
 typedef struct spooky_state
