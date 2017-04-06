@@ -66,7 +66,7 @@ GNU General Public License for more details.
 #define nativenewline "\r\n"
 #define snprintf _snprintf
 #define ignore_unused_result(x) (void)x
-#define CONSTRUCT(structname) 
+#define CONSTRUCT(structname)
 #define DEBUGBREAK() do { if (IsDebuggerPresent()) DebugBreak(); } while(0)
 #define PATH_MAX MAX_PATH
 #pragma warning(disable:4996)
@@ -75,10 +75,10 @@ GNU General Public License for more details.
 /* sv_array */
 typedef unsigned char byte;
 typedef struct sv_array {
-	byte *buffer;
-	uint32_t elementsize;
-	uint32_t capacity; /* in terms of elementsize*/
-	uint32_t length; /* in terms of elementsize*/
+    byte *buffer;
+    uint32_t elementsize;
+    uint32_t capacity; /* in terms of elementsize*/
+    uint32_t length; /* in terms of elementsize*/
 } sv_array;
 
 typedef uint8_t byte;
@@ -97,8 +97,8 @@ void sv_array_close(sv_array *self);
 
 /* sv_2d_array */
 typedef struct sv_2d_array {
-	sv_array arr;
-	uint32_t elementsize;
+    sv_array arr;
+    uint32_t elementsize;
 } sv_2d_array;
 sv_2d_array sv_2d_array_open(uint32_t elementsize);
 void sv_2d_array_ensure_space(sv_2d_array *self, uint32_t d1, uint32_t d2);
@@ -108,9 +108,9 @@ void sv_2d_array_close(sv_2d_array *self);
 
 /* sv_pseudosplit */
 typedef struct sv_pseudosplit {
-	bstring text;
-	bstring currentline;
-	sv_array splitpoints;
+    bstring text;
+    bstring currentline;
+    sv_array splitpoints;
 } sv_pseudosplit;
 
 /* like splitting a string, but faster */
@@ -123,8 +123,8 @@ void sv_pseudosplit_close(sv_pseudosplit *self);
 
 /* sv_result */
 typedef struct sv_result {
-	bstring msg;
-	int code;
+    bstring msg;
+    int code;
 } sv_result;
 
 extern sv_result OK;
@@ -200,12 +200,12 @@ void fnmatch_checkvalid(const char *pattern, bstring response);
 
 inline bstring bstring_open(void)
 {
-	return bstr_fromstatic("");
+    return bstr_fromstatic("");
 }
 
 inline void bstrclear(bstring s)
 {
-	bassignblk(s, "", 0);
+    bassignblk(s, "", 0);
 }
 
 #define WARN_NUL_IN_STR 0
@@ -236,12 +236,12 @@ int bstr_replaceall(bstring s, const char *find, const char *replacewith);
 bool bstr_equal(const bstring s1, const bstring s2);
 
 #define chars_to_uint32(c1, c2, c3, c4) \
-		(((uint32_t)(c1)) << 24) | (((uint32_t)(c2)) << 16) | /* allow cast */ \
-		(((uint32_t)(c3)) << 8) | ((uint32_t)(c4)) /* allow cast */
+        (((uint32_t)(c1)) << 24) | (((uint32_t)(c2)) << 16) | /* allow cast */ \
+        (((uint32_t)(c3)) << 8) | ((uint32_t)(c4)) /* allow cast */
 
 /* sv_wstr */
 typedef struct sv_wstr {
-	sv_array arr;
+    sv_array arr;
 } sv_wstr;
 
 sv_wstr sv_wstr_open(uint32_t initial_length);
@@ -262,38 +262,38 @@ void alertdialog(const char *message);
 /* ui menus */
 typedef enum
 {
-	continue_on_err = 0,
-	exit_on_err,
+    continue_on_err = 0,
+    exit_on_err,
 } erespondtoerr;
 
 struct svdp_application;
 typedef sv_result(*FnMenuCallback)(struct svdp_application *, int);
 typedef struct ui_numbered_menu_spec_entry {
-	const char *message;
-	FnMenuCallback callback;
-	int arg;
+    const char *message;
+    FnMenuCallback callback;
+    int arg;
 } ui_numbered_menu_spec_entry;
 
 typedef const struct ui_numbered_menu_spec_entry *(*FnMenuGetNextMenu) (struct svdp_application *);
 int ui_numbered_menu_pick_from_long_list(const bstrlist *list, int groupsize);
 check_result ui_numbered_menu_show(const char *msg, const ui_numbered_menu_spec_entry *entries,
-	struct svdp_application *app, FnMenuGetNextMenu getnextmenu);
+    struct svdp_application *app, FnMenuGetNextMenu getnextmenu);
 int ui_numbered_menu_pick_from_list(const char *msg, const bstrlist *list,
-	const char *format_each, const char *additionalopt1, const char *additionalopt2);
+    const char *format_each, const char *additionalopt1, const char *additionalopt2);
 
 /* sv_file */
 typedef struct sv_file {
-	FILE *file;
+    FILE *file;
 } sv_file;
 
 /* sv_log */
 typedef struct sv_log {
-	bstring dir;
-	sv_file logfile;
-	uint32_t logfilenumber;
-	uint32_t counter;
-	int32_t cap_filesize;
-	int64_t start_of_day;
+    bstring dir;
+    sv_file logfile;
+    uint32_t logfilenumber;
+    uint32_t counter;
+    int32_t cap_filesize;
+    int64_t start_of_day;
 } sv_log;
 
 check_result sv_log_open(sv_log *self, const char *dir);
@@ -305,11 +305,11 @@ void sv_log_writelines(const char *s1, const char *s2);
 void sv_log_flush(void);
 void sv_log_addnewlinetime(FILE *f, int64_t start_of_day, int64_t seconds, long milliseconds);
 void appendnumbertofilename(const char *dir,
-	const char *prefix, const char *suffix, uint32_t number, bstring out);
+    const char *prefix, const char *suffix, uint32_t number, bstring out);
 uint32_t readnumberfromfilename(bstring tmp,
-	const char *prefix, const char *suffix, const char *candidate);
+    const char *prefix, const char *suffix, const char *candidate);
 check_result readlatestnumberfromfilename(const char *dir,
-	const char *prefix, const char *suffix, uint32_t *latestnumber);
+    const char *prefix, const char *suffix, uint32_t *latestnumber);
 
 /* error handling */
 void check_b_hit(void);
@@ -317,7 +317,7 @@ void debugbreak(void);
 void die(void);
 void set_debugbreaks_enabled(bool b);
 void check_warn_impl(sv_result res,
-	const char *msg, const char *fnname, erespondtoerr respondtoerr);
+    const char *msg, const char *fnname, erespondtoerr respondtoerr);
 
 #ifdef _DEBUG
 #define debugonly(x) x
@@ -328,88 +328,88 @@ void check_warn_impl(sv_result res,
 /* use debugonly(if (0) printf...) to let the compiler validate format strings. */
 
 #define check(expression) do { \
-	currenterr = (expression); \
-	if (currenterr.code) { \
-		sv_log_writefmt("leaving scope, %s", (#expression)); \
-		sv_log_flush(); \
-		goto cleanup; \
-	} } while(0)
+    currenterr = (expression); \
+    if (currenterr.code) { \
+        sv_log_writefmt("leaving scope, %s", (#expression)); \
+        sv_log_flush(); \
+        goto cleanup; \
+    } } while(0)
 
 #define check_b(cond, ...) do { \
-	if (!(cond)) { \
-		sv_log_writefmt(__VA_ARGS__); \
-		sv_log_writefmt("leaving scope, %s fn %s line %d", \
-			(#cond), __FUNCTION__, __LINE__); \
-		check_b_hit(); \
-		currenterr.msg = bformat(__VA_ARGS__); \
-		currenterr.code = -1; \
-		debugonly(if (0) { printf(__VA_ARGS__); }) \
-		goto cleanup; \
-	} } while(0)
+    if (!(cond)) { \
+        sv_log_writefmt(__VA_ARGS__); \
+        sv_log_writefmt("leaving scope, %s fn %s line %d", \
+            (#cond), __FUNCTION__, __LINE__); \
+        check_b_hit(); \
+        currenterr.msg = bformat(__VA_ARGS__); \
+        currenterr.code = -1; \
+        debugonly(if (0) { printf(__VA_ARGS__); }) \
+        goto cleanup; \
+    } } while(0)
 
 #define check_fatal(cond, ...) do { \
-	if (!(cond)) { \
-		sv_log_writefmt(__VA_ARGS__); \
-		sv_log_writefmt("exiting, %s fn %s line %d", \
-			(#cond), __FUNCTION__, __LINE__); \
-		fprintf(stderr, __VA_ARGS__); \
-		die(); \
-	} } while(0)
+    if (!(cond)) { \
+        sv_log_writefmt(__VA_ARGS__); \
+        sv_log_writefmt("exiting, %s fn %s line %d", \
+            (#cond), __FUNCTION__, __LINE__); \
+        fprintf(stderr, __VA_ARGS__); \
+        die(); \
+    } } while(0)
 
 #define check_sql(db, code) do { \
-	int coderesult = (code); \
-	if (coderesult != SQLITE_OK && coderesult != SQLITE_ROW && coderesult != SQLITE_DONE) { \
-		check_b(0, "sqlite returned %s %d " #code, \
-			((db) ? sqlite3_errmsg(db) : \
-			sqlite3_errstr(coderesult)), coderesult); \
-	} } while (0)
+    int coderesult = (code); \
+    if (coderesult != SQLITE_OK && coderesult != SQLITE_ROW && coderesult != SQLITE_DONE) { \
+        check_b(0, "sqlite returned %s %d " #code, \
+            ((db) ? sqlite3_errmsg(db) : \
+            sqlite3_errstr(coderesult)), coderesult); \
+    } } while (0)
 
 #define check_warn(p1, p2, p3) \
-	check_warn_impl((p1), (p2), __FUNCTION__, (p3))
+    check_warn_impl((p1), (p2), __FUNCTION__, (p3))
 
 #define log_b(cond, ...) do { \
-	if (!(cond)) { \
-		sv_log_writefmt("'%s', '%s'", (#cond), __FUNCTION__); \
-		sv_log_writefmt(__VA_ARGS__); \
-		debugonly(if (0) { printf(__VA_ARGS__); }) \
-	} } while(0)
+    if (!(cond)) { \
+        sv_log_writefmt("'%s', '%s'", (#cond), __FUNCTION__); \
+        sv_log_writefmt(__VA_ARGS__); \
+        debugonly(if (0) { printf(__VA_ARGS__); }) \
+    } } while(0)
 
 #define log_errno(vardatatypeandname, expression, ...) \
-	errno = 0; \
-	int TOKENPASTE2(log_errnoval, __LINE__) = (expression); \
-	vardatatypeandname = TOKENPASTE2(log_errnoval, __LINE__); \
-	const char *TOKENPASTE2(log_errnocontext , __LINE__)[4] = {__VA_ARGS__}; \
-	do { if ((TOKENPASTE2(log_errnoval, __LINE__)) < 0) { \
-		log_errno_impl( \
-			#expression, errno, TOKENPASTE2(log_errnocontext, __LINE__), __FUNCTION__, __LINE__); \
-	} } while (0)
+    errno = 0; \
+    int TOKENPASTE2(log_errnoval, __LINE__) = (expression); \
+    vardatatypeandname = TOKENPASTE2(log_errnoval, __LINE__); \
+    const char *TOKENPASTE2(log_errnocontext , __LINE__)[4] = {__VA_ARGS__}; \
+    do { if ((TOKENPASTE2(log_errnoval, __LINE__)) < 0) { \
+        log_errno_impl( \
+            #expression, errno, TOKENPASTE2(log_errnocontext, __LINE__), __FUNCTION__, __LINE__); \
+    } } while (0)
 
 #define check_errno(vardatatypeandname, expression, ...) \
-	log_errno(vardatatypeandname, expression, __VA_ARGS__); \
-	do { if ((TOKENPASTE2(log_errnoval, __LINE__)) < 0) { \
-		check_errno_impl( \
-			&currenterr, #expression, errno, TOKENPASTE2(log_errnocontext, __LINE__), __FUNCTION__); \
-		goto cleanup; \
-	} } while (0)
+    log_errno(vardatatypeandname, expression, __VA_ARGS__); \
+    do { if ((TOKENPASTE2(log_errnoval, __LINE__)) < 0) { \
+        check_errno_impl( \
+            &currenterr, #expression, errno, TOKENPASTE2(log_errnocontext, __LINE__), __FUNCTION__); \
+        goto cleanup; \
+    } } while (0)
 
 #define log_win32(vardatatypeandname, expression, failureval, ...) \
-	SetLastError(0); \
-	auto TOKENPASTE2(log_errwin32val, __LINE__) = (expression); \
-	vardatatypeandname = TOKENPASTE2(log_errwin32val, __LINE__); \
-	DWORD TOKENPASTE2(log_errwin32lasterr, __LINE__) = GetLastError(); \
-	const char *TOKENPASTE2(log_errwin32context, __LINE__)[4] = {__VA_ARGS__}; \
-	do { if ((TOKENPASTE2(log_errwin32val, __LINE__)) == (failureval)) { \
-		log_errwin32_impl(#expression, TOKENPASTE2(log_errwin32lasterr, __LINE__), \
-			TOKENPASTE2(log_errwin32context, __LINE__), __FUNCTION__, __LINE__); \
-	} } while (0)
+    SetLastError(0); \
+    auto TOKENPASTE2(log_errwin32val, __LINE__) = (expression); \
+    vardatatypeandname = TOKENPASTE2(log_errwin32val, __LINE__); \
+    DWORD TOKENPASTE2(log_errwin32lasterr, __LINE__) = GetLastError(); \
+    const char *TOKENPASTE2(log_errwin32context, __LINE__)[4] = {__VA_ARGS__}; \
+    do { if ((TOKENPASTE2(log_errwin32val, __LINE__)) == (failureval)) { \
+        log_errwin32_impl(#expression, TOKENPASTE2(log_errwin32lasterr, __LINE__), \
+            TOKENPASTE2(log_errwin32context, __LINE__), __FUNCTION__, __LINE__); \
+    } } while (0)
 
 #define check_win32(vardatatypeandname, expression, failureval, ...) \
-	log_win32(vardatatypeandname, expression, failureval, __VA_ARGS__); \
-	do { if ((TOKENPASTE2(log_errwin32val, __LINE__)) == (failureval)) { \
-		check_errwin32_impl(&currenterr, #expression, TOKENPASTE2(log_errwin32lasterr, __LINE__), \
-			TOKENPASTE2(log_errwin32context, __LINE__), __FUNCTION__); \
-		goto cleanup; \
-	} } while (0)
+    log_win32(vardatatypeandname, expression, failureval, __VA_ARGS__); \
+    do { if ((TOKENPASTE2(log_errwin32val, __LINE__)) == (failureval)) { \
+        check_errwin32_impl(&currenterr, #expression, TOKENPASTE2(log_errwin32lasterr, __LINE__), \
+            TOKENPASTE2(log_errwin32context, __LINE__), __FUNCTION__); \
+        goto cleanup; \
+    } } while (0)
 
 
 #define CheckBformatStrings 0
@@ -423,24 +423,24 @@ extern bstring PlaceholderCheckFormatStrings;
 #endif
 
 void log_errno_impl(const char *exp,
-	int nerrno, const char *context[4], const char *fn, int lineno);
+    int nerrno, const char *context[4], const char *fn, int lineno);
 void check_errno_impl(sv_result *currenterr,
-	const char *exp, int nerrno, const char *context[4], const char *fn);
+    const char *exp, int nerrno, const char *context[4], const char *fn);
 void log_errwin32_impl(const char *exp,
-	unsigned long nerrno, const char *context[4], const char *fn, int lineno);
+    unsigned long nerrno, const char *context[4], const char *fn, int lineno);
 void check_errwin32_impl(sv_result *currenterr,
-	const char *exp, unsigned long nerrno, const char *context[4], const char *fn);
+    const char *exp, unsigned long nerrno, const char *context[4], const char *fn);
 extern int _;
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define set_self_zero() \
-	memset((self), 0, sizeof(*(self)))
+    memset((self), 0, sizeof(*(self)))
 
 #define str_and_len(s) \
-	("" s ""), (countof32u(s) - 1)
+    ("" s ""), (countof32u(s) - 1)
 
 #define str_and_len32s(s) \
-	("" s ""), (countof32s(s) - 1)
+    ("" s ""), (countof32s(s) - 1)
 
 #endif

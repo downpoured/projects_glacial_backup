@@ -23,25 +23,25 @@ check_result tmpwritetextfile(const char *dir, const char *leaf, bstring fullpat
 check_result run_utils_tests(void);
 
 #define TestEqs(s1, s2) do { \
-	if (!teststrimpl(__LINE__, (s1), (s2))) { \
-		DEBUGBREAK(); \
-		exit(1); \
-	} } while(0)
+    if (!teststrimpl(__LINE__, (s1), (s2))) { \
+        DEBUGBREAK(); \
+        exit(1); \
+    } } while(0)
 
 #define TestEqn(n1, n2) do { \
-	if (!testintimpl(__LINE__, (unsigned long long)(n1), \
-		(unsigned long long)(n2))) { \
-		DEBUGBREAK(); \
-		exit(1); \
-	} } while(0)
+    if (!testintimpl(__LINE__, (unsigned long long)(n1), \
+        (unsigned long long)(n2))) { \
+        DEBUGBREAK(); \
+        exit(1); \
+    } } while(0)
 
 #define TestEqList(s1, list) do { \
-	if (!testlistimpl(__LINE__, (s1), (list))) { \
-		DEBUGBREAK(); \
-		exit(1); \
-	} } while(0)
+    if (!testlistimpl(__LINE__, (s1), (list))) { \
+        DEBUGBREAK(); \
+        exit(1); \
+    } } while(0)
 
 #define TestTrue(cond) \
-	TestEqn(1, (cond)!=0)
+    TestEqn(1, (cond)!=0)
 
 #endif

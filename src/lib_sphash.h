@@ -43,10 +43,10 @@
 
 typedef struct spooky_state
 {
-	uint64_t m_data[2 * SC_NUMVARS];
-	uint64_t m_state[SC_NUMVARS];
-	uint64_t m_length;
-	unsigned char m_remainder;
+    uint64_t m_data[2 * SC_NUMVARS];
+    uint64_t m_state[SC_NUMVARS];
+    uint64_t m_length;
+    unsigned char m_remainder;
 } spooky_state;
 
 #ifdef __cplusplus
@@ -57,35 +57,35 @@ int is_little_endian(void);
 
 void spooky_shorthash
 (
-	const void *message,
-	uint64_t length,
-	uint64_t *hash1,
-	uint64_t *hash2,
-	uint64_t *hash3,
-	uint64_t *hash4
+    const void *message,
+    uint64_t length,
+    uint64_t *hash1,
+    uint64_t *hash2,
+    uint64_t *hash3,
+    uint64_t *hash4
 );
 
 void spooky_init
 (
-	struct spooky_state *state,
-	uint64_t hash1,
-	uint64_t hash2
+    struct spooky_state *state,
+    uint64_t hash1,
+    uint64_t hash2
 );
 
 void spooky_update
 (
-	struct spooky_state *state,
-	const void *msg,
-	uint64_t len
+    struct spooky_state *state,
+    const void *msg,
+    uint64_t len
 );
 
 void spooky_final
 (
-	struct spooky_state *state,
-	uint64_t *hash1,
-	uint64_t *hash2,
-	uint64_t *hash3,
-	uint64_t *hash4
+    struct spooky_state *state,
+    uint64_t *hash1,
+    uint64_t *hash2,
+    uint64_t *hash3,
+    uint64_t *hash4
 );
 
 
