@@ -43,5 +43,5 @@ With this feature enabled, we only backup the file when there are changes to the
 
 Prerequisite on Linux: install ffmpeg. (Use Google to find the right instructions for your distro)
 
-Prerequisite on Windows: download static ffmpeg binaries, for example from [this site](https://ffmpeg.zeranoe.com/builds/). Unzip everything and copy ffmpeg.exe into glacial_backup's "tools" directory.
+Prerequisite on Windows: download static ffmpeg binaries, for example from [this site](https://ffmpeg.zeranoe.com/builds/). Unzip everything and look for ffmpeg.exe. Now go to where glacial_backup is, and notice that there is a "tools" directory that contains a few tools like tar.exe. Copy ffmpeg.exe into this tools directory.
 

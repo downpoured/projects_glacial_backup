@@ -7,7 +7,7 @@ Setup | [Backup](backup.md) | [Restore](restore.md) | [Other features](other.md)
 
 * download [glacial\_backup020win32.zip](https://github.com/downpoured/projects_glacial_backup/releases/download/v0.2.0/glacial_backup020win32.zip)
 
-* unzip everything into a folder
+* extract all files from the .zip file
 
 * run glacial_backup.exe
 

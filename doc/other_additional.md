@@ -3,17 +3,17 @@
 
 ## Additional features
 
-Choose **More...** from the main menu to see these features.
+Choose **More...** from the main menu.
 
 #### View information
 
-Shows a summary of backup information, for example:
+Shows a summary of backup information, like this,
 
 ![Screenshot view info](https://raw.githubusercontent.com/downpoured/projects_glacial_backup/master/doc/img/moreinfo.png)
 
 #### View logs
 
-Log text files are saved on disk, primarily for diagnostic purposes.
+Log text files are saved on disk, primarily for diagnostics.
 
 #### Verify archive integrity
 
@@ -25,7 +25,7 @@ Runs tests. Requires ffmpeg to be installed, see the prereqs in the last item on
 
 #### Run backups with low-privilege account
 
-We support running GlacialBackup in a secondary user account that has restricted privileges. This can be useful for running as a background task, or to minimize the impact of any security vulnerability in xz or ffmpeg (although, note that the use of ffmpeg is disabled by default).
+We support running GlacialBackup in a secondary user account that has restricted privileges. This can be useful for running as a background task, or to reduce the impact of any security vulnerability in xz or ffmpeg (note that the use of ffmpeg is disabled by default).
 
 #### Text file list of files to back up
 

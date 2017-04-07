@@ -1,4 +1,3 @@
-# GlacialBackup
 
 Open source backup software for Linux and Windows
 
@@ -9,4 +8,4 @@ Open source backup software for Linux and Windows
 
 Read more:
 
-[Setup](docs/setup.md) | [Backup](docs/backup.md) | [Restore](docs/restore.md) | [Other features](docs/other.md)
+[Setup](doc/setup.md) | [Backup](doc/backup.md) | [Restore](doc/restore.md) | [Other features](doc/other.md)

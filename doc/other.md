@@ -7,5 +7,5 @@
 
 [Options](other_options.md)
 
-[Additional features](other_more.md)
+[Additional features](other_additional.md)
 
