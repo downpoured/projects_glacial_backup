@@ -1,5 +1,5 @@
 
-[Setup](setup.md) | [Backup](backup.md) | [Restore](restore.md) | Compact | [Options](options.md) | [Other features](other.md)
+[Setup](setup.md) | [Backup](backup.md) | [Restore](restore.md) | [Other features](other.md)
 
 ### Compact archives
 

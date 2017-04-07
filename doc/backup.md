@@ -1,5 +1,5 @@
 
-[Setup](setup.md) | Backup | [Restore](restore.md) | [Compact](compact.md) | [Options](options.md) | [Other features](other.md)
+[Setup](setup.md) | Backup | [Restore](restore.md) | [Other features](other.md)
 
 ## Backing up files
 

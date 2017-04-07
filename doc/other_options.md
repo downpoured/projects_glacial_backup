@@ -1,9 +1,9 @@
 
-[Setup](setup.md) | [Backup](backup.md) | [Restore](restore.md) | [Compact](compact.md) | Options | [Other features](other.md)
+[Setup](setup.md) | [Backup](backup.md) | [Restore](restore.md) | [Other features](other.md)
 
 ## Options
 
-Chose **Edit backup group...** to set these options.
+Choose **Edit backup group...** to set options.
 
 #### Add/remove directories
 

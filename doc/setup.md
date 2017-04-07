@@ -1,5 +1,5 @@
 
-Setup | [Backup](backup.md) | [Restore](restore.md) | [Compact](compact.md) | [Options](options.md) | [Other features](other.md)
+Setup | [Backup](backup.md) | [Restore](restore.md) | [Other features](other.md)
 
 ## Setting up GlacialBackup
 
