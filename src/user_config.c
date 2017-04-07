@@ -518,6 +518,7 @@ check_result sv_app_creategroup(sv_app *self, unused(int))
 
             check(sv_app_creategroup_impl(self, cstr(newgrpname), cstr(dir)));
             check(load_backup_group(self, &grp, &db, cstr(newgrpname)));
+            check_b(db.db, "failed to load group");
             bstrlist_append(grp.root_directories, newpath);
             check(sv_grp_persist(&db, &grp));
             check(svdb_disconnect(&db));

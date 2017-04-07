@@ -20,9 +20,9 @@ check_result sv_application_run(sv_app *app, int op)
     sv_group grp = {};
     svdb_db db = {};
     check(load_backup_group(app, &grp, &db, NULL));
-    sv_log_fmt("run %d with %s", op, cstr(grp.grpname));
     if (db.db)
     {
+        sv_log_fmt("run %d with %s", op, cstr(grp.grpname));
         switch (op)
         {
         case sv_run_compact:
@@ -1086,7 +1086,7 @@ check_result sv_compact_ask_user(const sv_group *grp, sv_compact_state *op)
     if (grp->days_to_keep_prev_versions)
     {
         bformata(msg, "Files that you've deleted %d days ago are eligible "
-            "o be removed from the backup archives when compaction is run. "
+            "to be removed from the backup archives when compaction is run. "
             "(This number of days can be changed in 'Edit Group').",
             grp->days_to_keep_prev_versions);
     }

@@ -52,6 +52,7 @@ SV_BEGIN_TEST_SUITE(whole_tests_operations)
     check(sv_app_creategroup_impl(&app, "test", cstr(hook.path_group)));
     check(sv_app_findgroupnames(&app));
     check(load_backup_group(&app, &grp, &db, "test"));
+    check_b(db.db, "failed to load group");
     grp.days_to_keep_prev_versions = 0;
     grp.separate_metadata = 1;
     check(sv_grp_persist(&db, &grp));

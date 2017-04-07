@@ -1379,7 +1379,7 @@ void check_warn_impl(sv_result res,
         log_b(0, "%s %s", function, cstr(res.msg));
         sv_log_flush();
 
-        if (!g_quiet_warnings)
+        if (!g_quiet_warnings || respondtoerr != continue_on_err)
         {
             printf("%s\n%s\n", msg ? msg : "", cstr(res.msg));
             alert("");
