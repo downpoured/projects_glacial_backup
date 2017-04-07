@@ -1,4 +1,6 @@
 
+[Setup](setup.md) | [Backup](backup.md) | [Restore](restore.md) | [Compact](compact.md) | [Options](options.md) | Other features
+
 ## Other features
 
 Chose **More...** to see these features.
@@ -19,7 +21,7 @@ Compares checksums to confirm the integrity of .tar files.
 
 #### Run tests
 
-Runs tests. Requires ffmpeg to be installed, see the prereqs in the last item on the [options](doc/options.md) page.
+Runs tests. Requires ffmpeg to be installed, see the prereqs in the last item on the [options](options.md) page.
 
 #### Run backups with low-privilege account
 
