@@ -60,9 +60,9 @@ check_result ui_restorefromother(sv_app *app, unused(int))
 
 check_result ui_menu_about(unused_ptr(sv_app), unused(int))
 {
-    alert("Downpoured GlacialBackup, by Ben Fisher, 2016."
+    alert("GlacialBackup, by Ben Fisher, 2016."
         "\n\nFor documentation and more, refer to"
-        "\nhttps://github.com/downpoured"
+        "\nhttps://github.com/moltenjs/projects_glacial_backup"
         "\n\nGlacialBackup is free software: you can redistribute it and / "
         "or modify\nit under the terms of the GNU General Public License "
         "as published by\nthe Free Software Foundation, either version 3 "
