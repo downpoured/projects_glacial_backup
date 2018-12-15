@@ -1,10 +1,9 @@
 
-Open source backup software for Linux and Windows
-
-* Deduplication, versioning, compression
+* Backup software for Linux and Windows
+* Deduplication, versioning, and compression
 * Works well with Amazon Glacier
 * Can skip metadata-only changes in mp3, m4a, ogg music
-* Standard formats; data can be restored by any tool that can unarchive xz and tar
+* Data stored in open formats: tar, xz, and human-readable text
 
 Read more:
 
