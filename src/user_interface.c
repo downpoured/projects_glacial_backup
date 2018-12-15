@@ -176,7 +176,8 @@ int mainsig
     bstring dir_from_args = parse_cmd_line_args(argc, argv, &low_access);
     check_warn(sv_app_load(&app, cstr(dir_from_args), low_access), NULL,
         exit_on_err);
-    check_warn(menu_choose_action("Welcome to GlacialBackup.",
+    check_warn(menu_choose_action("Welcome to GlacialBackup.\n"
+        "https://github.com/moltenform/projects-glacial-backup",
         ui_app_menu_mainmenu_get(&app), &app, &ui_app_menu_mainmenu_get),
         NULL, exit_on_err);
     sv_app_close(&app);
