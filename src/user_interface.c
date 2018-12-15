@@ -62,7 +62,7 @@ check_result ui_menu_about(unused_ptr(sv_app), unused(int))
 {
     alert("GlacialBackup, by Ben Fisher, 2016."
         "\n\nFor documentation and more, refer to"
-        "\nhttps://github.com/moltenjs/projects_glacial_backup"
+        "\nhttps://github.com/moltenform/projects-glacial-backup"
         "\n\nGlacialBackup is free software: you can redistribute it and / "
         "or modify\nit under the terms of the GNU General Public License "
         "as published by\nthe Free Software Foundation, either version 3 "

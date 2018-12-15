@@ -1,4 +1,4 @@
 
-The documentation has been moved to moltenjs.com,
+The documentation has been moved to moltenform.com,
 
-(https://moltenjs.com/page/projects_glacial_backup/doc/index.html)[https://moltenjs.com/page/projects_glacial_backup/doc/index.html]
+(https://moltenform.com/page/projects-glacial-backup/doc/index.html)[https://moltenform.com/page/projects-glacial-backup/doc/index.html]

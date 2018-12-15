@@ -8,4 +8,4 @@ Open source backup software for Linux and Windows
 
 Read more:
 
-[Download](https://moltenjs.com/page/projects_glacial_backup/doc/download.html) | [Backup](https://moltenjs.com/page/projects_glacial_backup/doc/backup.html) | [Restore](https://moltenjs.com/page/projects_glacial_backup/doc/restore.html) | [Other features](https://moltenjs.com/page/projects_glacial_backup/doc/other.html)
+[Download](https://moltenform.com/page/projects-glacial-backup/doc/download.html) | [Backup](https://moltenform.com/page/projects-glacial-backup/doc/backup.html) | [Restore](https://moltenform.com/page/projects-glacial-backup/doc/restore.html) | [Other features](https://moltenform.com/page/projects-glacial-backup/doc/other.html)
