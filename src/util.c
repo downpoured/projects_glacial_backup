@@ -14,22 +14,26 @@ GNU General Public License for more details.
 
 #include "util_os.h"
 
-sv_array sv_array_open(uint32_t elementsize, uint32_t initialcapacity)
+/* a helper wrapper for heap arrays */
+sv_array sv_array_open(uint32_t elementsize, uint32_t initiallength)
 {
     sv_array self = {};
     self.elementsize = elementsize;
-    if (initialcapacity)
+    if (initiallength)
     {
-        self.buffer = sv_calloc(initialcapacity, elementsize);
-        self.capacity = initialcapacity;
+        self.buffer = sv_calloc(initiallength, elementsize);
     }
 
+    self.capacity = initiallength;
+    self.length = initiallength;
     return self;
 }
 
 sv_array sv_array_open_u64()
 {
-    return sv_array_open(sizeof32u(uint64_t), 1);
+    sv_array ret = sv_array_open(sizeof32u(uint64_t), 0);
+    sv_array_reserve(&ret, 1);
+    return ret;
 }
 
 void sv_array_reserve(sv_array *self, uint32_t requestedcapacity)
@@ -850,7 +854,8 @@ sv_wstr sv_wstr_open(uint32_t initial_length)
         "invalid length");
 
     sv_wstr self = {};
-    self.arr = sv_array_open(sizeof(wchar_t), initial_length);
+    self.arr = sv_array_open(sizeof(wchar_t), 0);
+    sv_array_reserve(&self.arr, initial_length);
     sv_array_appendzeros(&self.arr, 1); /* add nul char*/
     return self;
 }

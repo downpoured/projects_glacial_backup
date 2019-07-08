@@ -48,22 +48,23 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         int32_t src[] = { 10, 20, 30 };
         sv_array_append(&a, (byte *)&src[0], 2);
         sv_array_append(&a, (byte *)&src[1], 2);
-        TestEqn(10, *(int32_t *)sv_array_at(&a, 0));
-        TestEqn(20, *(int32_t *)sv_array_at(&a, 1));
-        TestEqn(20, *(int32_t *)sv_array_at(&a, 2));
-        TestEqn(30, *(int32_t *)sv_array_at(&a, 3));
+        TestEqn(10, *(const int32_t *)sv_array_atconst(&a, 0));
+        TestEqn(20, *(const int32_t *)sv_array_atconst(&a, 1));
+        TestEqn(20, *(const int32_t *)sv_array_atconst(&a, 2));
+        TestEqn(30, *(const int32_t *)sv_array_atconst(&a, 3));
         TestEqn(4, a.length);
     }
 
     SV_TEST("skip allocation when initializing with no capacity") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 0);
-        TestEqn(NULL, a.buffer);
+        TestTrue(NULL == a.buffer);
         TestEqn(0, a.capacity);
         TestEqn(0, a.length);
     }
 
     SV_TEST("perform allocation when initializing with capacity") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         TestTrue(NULL != a.buffer);
         TestEqn(3, a.capacity);
         TestEqn(0, a.length);
@@ -71,6 +72,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("verify capacity, 1 item added") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         int32_t n = 1;
         sv_array_append(&a, (byte *)&n, 1);
         TestEqn(3, a.capacity);
@@ -79,6 +81,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("verify capacity, 2 items added") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         int32_t n = 1;
         sv_array_append(&a, (byte *)&n, 1);
         sv_array_append(&a, (byte *)&n, 1);
@@ -88,6 +91,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("verify capacity, 3 items added") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         int32_t n = 1;
         sv_array_append(&a, (byte *)&n, 1);
         sv_array_append(&a, (byte *)&n, 1);
@@ -98,6 +102,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("verify capacity, 4 items added") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         int32_t n = 1;
         sv_array_append(&a, (byte *)&n, 1);
         sv_array_append(&a, (byte *)&n, 1);
@@ -109,6 +114,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("verify capacity, 5 items added") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         int32_t n = 1;
         sv_array_append(&a, (byte *)&n, 1);
         sv_array_append(&a, (byte *)&n, 1);
@@ -145,6 +151,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("reserve capacity") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         int32_t n = 10;
         sv_array_append(&a, (byte *)&n, 1);
         sv_array_reserve(&a, 4000);
@@ -155,6 +162,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("add zeros, causing realloc") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         int32_t n = 10;
         sv_array_append(&a, (byte *)&n, 1);
         sv_array_appendzeros(&a, 4000);
@@ -169,6 +177,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("add many items, causing realloc") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         for (int i = 0; i < 4000; i++)
         {
             sv_array_append(&a, (byte *)&i, 1);
@@ -185,6 +194,7 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
 
     SV_TEST("add from buffer, causing realloc") {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
+        sv_array_truncatelength(&a, 0);
         int32_t n = 10;
         sv_array_append(&a, (byte *)&n, 1);
         int buffer[2000] = {};

@@ -87,7 +87,7 @@ typedef struct sv_array {
     uint32_t length;
 } sv_array;
 
-sv_array sv_array_open(uint32_t elementsize, uint32_t initialcapacity);
+sv_array sv_array_open(uint32_t elementsize, uint32_t initiallength);
 sv_array sv_array_open_u64();
 void sv_array_reserve(sv_array *self, uint32_t requestedcapacity);
 void sv_array_append(sv_array *self, const void *inbuffer, uint32_t incount);

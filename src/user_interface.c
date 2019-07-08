@@ -150,6 +150,7 @@ menu_action_entry entries_without_backup_group[] = {
     { "About GlacialBackup...", &ui_menu_about },
     { "Create backup group...", &sv_app_creategroup },
     { "Restore from another computer...", &ui_restorefromother },
+    { "Run tests", &ui_action_tests },
     { "Exit", &ui_action_exit },
     { NULL, NULL } };
 
