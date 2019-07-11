@@ -255,26 +255,6 @@ bool ask_user(const char *prompt);
 uint32_t ask_user_int(const char *prompt, int valmin, int valmax);
 void alert(const char *message);
 
-struct sv_app;
-typedef sv_result(*FnMenuCallback)(struct sv_app *, int);
-typedef struct menu_action_entry {
-    const char *message;
-    FnMenuCallback callback;
-    int arg;
-} menu_action_entry;
-
-int menu_choose_long(const bstrlist *list, int groupsize);
-typedef const struct menu_action_entry *(*FnMenuGetNextMenu) (
-    struct sv_app *);
-check_result menu_choose_action(const char *msg,
-    const menu_action_entry *entries,
-    struct sv_app *app,
-    FnMenuGetNextMenu getnextmenu);
-int menu_choose(const char *msg,
-    const bstrlist *list,
-    const char *format_each,
-    const char *additionalopt1,
-    const char *additionalopt2);
 
 typedef enum
 {
@@ -285,40 +265,6 @@ typedef enum
 typedef struct sv_file {
     FILE *file;
 } sv_file;
-
-typedef struct sv_log {
-    bstring dir;
-    sv_file logfile;
-    uint32_t logfilenumber;
-    uint32_t counter;
-    int32_t cap_filesize;
-    int64_t start_of_day;
-} sv_log;
-
-extern const uint32_t sv_log_check_size_period;
-check_result sv_log_open(sv_log *self, const char *dir);
-void sv_log_register_active_logger(sv_log *logger);
-void sv_log_close(sv_log *self);
-void sv_log_fmt(const char *fmt, ...);
-void sv_log_write(const char *s);
-void sv_log_writes(const char *s1, const char *s2);
-void sv_log_flush(void);
-void sv_log_addnewlinetime(FILE *f,
-    int64_t start_of_day,
-    int64_t seconds,
-    long milliseconds);
-void appendnumbertofilename(const char *dir,
-    const char *prefix,
-    const char *suffix,
-    uint32_t number,
-    bstring out);
-uint32_t readnumberfromfilename(const char *prefix,
-    const char *suffix,
-    const char *candidate);
-check_result readlatestnumberfromfilename(const char *dir,
-    const char *prefix,
-    const char *suffix,
-    uint32_t *latestnumber);
 
 /* error handling */
 void check_b_hit(void);
