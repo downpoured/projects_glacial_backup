@@ -15,20 +15,20 @@ GNU General Public License for more details.
 #ifndef UTIL_H_INCLUDE
 #define UTIL_H_INCLUDE
 
+#include "lib_bstrlib.h"
+#include <ctype.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <memory.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
-#include <limits.h>
-#include <memory.h>
 #include <string.h>
-#include <time.h>
-#include <fcntl.h>
 #include <sys/stat.h>
-#include "lib_bstrlib.h"
+#include <time.h>
 
 #ifndef _MSC_VER
 #include <byteswap.h>
@@ -65,12 +65,12 @@ GNU General Public License for more details.
     } while (0)
 
 #else /* _MSC_VER */
-#include <windows.h>
 #include <direct.h>
 #include <errno.h>
 #include <io.h>
 #include <psapi.h>
 #include <shlobj.h>
+#include <windows.h>
 
 #define staticassert(e) static_assert((e), "")
 #define countof _countof
@@ -111,7 +111,7 @@ typedef struct sv_array
 } sv_array;
 
 sv_array sv_array_open(uint32_t elementsize, uint32_t initiallength);
-sv_array sv_array_open_u64();
+sv_array sv_array_open_u64(void);
 void sv_array_reserve(sv_array *self, uint32_t requestedcapacity);
 void sv_array_append(sv_array *self, const void *inbuffer, uint32_t incount);
 void sv_array_appendzeros(sv_array *self, uint32_t incount);
@@ -138,7 +138,8 @@ void sv_result_close(sv_result *self);
 #define CONCAT(x, y) CONCAT2(x, y)
 #if defined(__GNUC__) && (__GNUC__ >= 4)
 #define CHECKRETURN __attribute__((warn_unused_result))
-#define unused(type) __attribute__((__unused__)) type CONCAT(unusedparam, __COUNTER__)
+#define unused(type) \
+    __attribute__((__unused__)) type CONCAT(unusedparam, __COUNTER__)
 #define unused_ptr(type) \
     __attribute__((__unused__)) type *CONCAT(unusedparam, __COUNTER__)
 #elif defined(_MSC_VER) && (_MSC_VER >= 1700)
@@ -222,9 +223,9 @@ void check_b_hit(void);
 void debugbreak(void);
 void die(void);
 void quiet_warnings(bool b);
-bool is_quiet();
-void check_warn_impl(
-    sv_result res, const char *msg, const char *fnname, erespondtoerr respondtoerr);
+bool is_quiet(void);
+void check_warn_impl(sv_result res, const char *msg, const char *fnname,
+    erespondtoerr respondtoerr);
 
 #ifdef _DEBUG
 #define debugonly(x) x
@@ -244,19 +245,19 @@ void check_warn_impl(
         }                                                   \
     } while (0)
 
-#define check_b(cond, ...)                                                           \
-    do                                                                               \
-    {                                                                                \
-        if (!(cond))                                                                 \
-        {                                                                            \
-            sv_log_fmt(__VA_ARGS__);                                                 \
-            sv_log_fmt(                                                              \
-                "leaving scope, %s fn %s line %d", (#cond), __FUNCTION__, __LINE__); \
-            check_b_hit();                                                           \
-            currenterr.msg = bformat(__VA_ARGS__);                                   \
-            currenterr.code = -1;                                                    \
-            debugonly(if (0) { printf(__VA_ARGS__); }) goto cleanup;                 \
-        }                                                                            \
+#define check_b(cond, ...)                                           \
+    do                                                               \
+    {                                                                \
+        if (!(cond))                                                 \
+        {                                                            \
+            sv_log_fmt(__VA_ARGS__);                                 \
+            sv_log_fmt("leaving scope, %s fn %s line %d", (#cond),   \
+                __FUNCTION__, __LINE__);                             \
+            check_b_hit();                                           \
+            currenterr.msg = bformat(__VA_ARGS__);                   \
+            currenterr.code = -1;                                    \
+            debugonly(if (0) { printf(__VA_ARGS__); }) goto cleanup; \
+        }                                                            \
     } while (0)
 
 #define check_b_warn(cond)                                       \
@@ -269,28 +270,30 @@ void check_warn_impl(
         }                                                        \
     } while (0)
 
-#define check_fatal(cond, ...)                                                        \
-    do                                                                                \
-    {                                                                                 \
-        if (!(cond))                                                                  \
-        {                                                                             \
-            sv_log_fmt(__VA_ARGS__);                                                  \
-            sv_log_fmt("exiting, %s fn %s line %d", (#cond), __FUNCTION__, __LINE__); \
-            fprintf(stderr, __VA_ARGS__);                                             \
-            die();                                                                    \
-        }                                                                             \
+#define check_fatal(cond, ...)                                                 \
+    do                                                                         \
+    {                                                                          \
+        if (!(cond))                                                           \
+        {                                                                      \
+            sv_log_fmt(__VA_ARGS__);                                           \
+            sv_log_fmt(                                                        \
+                "exiting, %s fn %s line %d", (#cond), __FUNCTION__, __LINE__); \
+            fprintf(stderr, __VA_ARGS__);                                      \
+            die();                                                             \
+        }                                                                      \
     } while (0)
 
-#define check_sql(db, code)                                                            \
-    do                                                                                 \
-    {                                                                                  \
-        int coderesult = (code);                                                       \
-        if (coderesult != SQLITE_OK && coderesult != SQLITE_ROW &&                     \
-            coderesult != SQLITE_DONE)                                                 \
-        {                                                                              \
-            check_b(0, "sqlite returned %s %d " #code,                                 \
-                ((db) ? sqlite3_errmsg(db) : sqlite3_errstr(coderesult)), coderesult); \
-        }                                                                              \
+#define check_sql(db, code)                                               \
+    do                                                                    \
+    {                                                                     \
+        int coderesult = (code);                                          \
+        if (coderesult != SQLITE_OK && coderesult != SQLITE_ROW &&        \
+            coderesult != SQLITE_DONE)                                    \
+        {                                                                 \
+            check_b(0, "sqlite returned %s %d " #code,                    \
+                ((db) ? sqlite3_errmsg(db) : sqlite3_errstr(coderesult)), \
+                coderesult);                                              \
+        }                                                                 \
     } while (0)
 
 #define check_warn(p1, p2, p3) check_warn_impl((p1), (p2), __FUNCTION__, (p3))
@@ -320,90 +323,95 @@ static inline bool limited_while_true_impl(int *counter)
         }                                                    \
     } while (0)
 
-#define log_errno_to(varname, expression, ...)                             \
-    errno = 0;                                                                     \
-    varname = (expression);                             \
-    int CONCAT(lasterrno, __LINE__) = errno; \
-    const char *CONCAT(log_errnocontext, __LINE__)[4] = {__VA_ARGS__};             \
-    do                                                                             \
-    {                                                                              \
-        if ((varname) < 0)                                  \
-        {                                                                          \
-            log_errno_impl(#expression, CONCAT(lasterrno, __LINE__), CONCAT(log_errnocontext, __LINE__), \
-                __FUNCTION__, __LINE__);                                           \
-        }                                                                          \
+#define log_errno_to(varname, expression, ...)                               \
+    errno = 0;                                                               \
+    varname = (expression);                                                  \
+    int CONCAT(lasterrno, __LINE__) = errno;                                 \
+    const char *CONCAT(log_errnocontext, __LINE__)[4] = {__VA_ARGS__};       \
+    do                                                                       \
+    {                                                                        \
+        if ((varname) < 0)                                                   \
+        {                                                                    \
+            log_errno_impl(#expression, CONCAT(lasterrno, __LINE__),         \
+                CONCAT(log_errnocontext, __LINE__), __FUNCTION__, __LINE__); \
+        }                                                                    \
     } while (0)
 
-#define log_errno(expression, ...) \
+#define log_errno(expression, ...)       \
     int CONCAT(errno_unnamed, __LINE__); \
-    log_errno_to(CONCAT(errno_unnamed, __LINE__), expression, __VA_ARGS__); \
+    log_errno_to(CONCAT(errno_unnamed, __LINE__), expression, __VA_ARGS__);
 
-#define check_errno(expression, ...)           \
-    log_errno(expression, __VA_ARGS__);        \
+#define check_errno(expression, ...)                               \
+    log_errno(expression, __VA_ARGS__);                            \
     do                                                             \
     {                                                              \
-        if ((CONCAT(errno_unnamed, __LINE__)) < 0)                  \
+        if ((CONCAT(errno_unnamed, __LINE__)) < 0)                 \
         {                                                          \
-            check_errno_impl(&currenterr, #expression, CONCAT(lasterrno, __LINE__),      \
+            check_errno_impl(&currenterr, #expression,             \
+                CONCAT(lasterrno, __LINE__),                       \
                 CONCAT(log_errnocontext, __LINE__), __FUNCTION__); \
             goto cleanup;                                          \
         }                                                          \
     } while (0)
 
-#define log_win32_to(varname, expression, failureval, ...) \
-    SetLastError(0);                                                         \
-    varname = (expression);                  \
-    DWORD CONCAT(lasterrval, __LINE__) = GetLastError();                     \
-    const char *CONCAT(errcontext, __LINE__)[4] = {__VA_ARGS__};             \
-    do                                                                       \
-    {                                                                        \
-        if ((varname) == (failureval))                      \
-        {                                                                    \
-            log_errwin32_impl(#expression, CONCAT(lasterrval, __LINE__),     \
-                CONCAT(errcontext, __LINE__), __FUNCTION__, __LINE__);       \
-        }                                                                    \
-    } while (0) \
+#define log_win32_to(varname, expression, failureval, ...)               \
+    SetLastError(0);                                                     \
+    varname = (expression);                                              \
+    DWORD CONCAT(lasterrval, __LINE__) = GetLastError();                 \
+    const char *CONCAT(errcontext, __LINE__)[4] = {__VA_ARGS__};         \
+    do                                                                   \
+    {                                                                    \
+        if ((varname) == (failureval))                                   \
+        {                                                                \
+            log_errwin32_impl(#expression, CONCAT(lasterrval, __LINE__), \
+                CONCAT(errcontext, __LINE__), __FUNCTION__, __LINE__);   \
+        }                                                                \
+    } while (0)
 
 #define log_win32(vardatatype, expression, failureval, ...) \
-    vardatatype CONCAT(errval_unused, __LINE__); \
-    log_win32_to(CONCAT(errval_unused, __LINE__), expression, failureval, __VA_ARGS__); \
+    vardatatype CONCAT(errval_unused, __LINE__);            \
+    log_win32_to(                                           \
+        CONCAT(errval_unused, __LINE__), expression, failureval, __VA_ARGS__);
 
-#define check_win32(vardatatype, expression, failureval, ...)    \
-    log_win32(vardatatype, expression, failureval, __VA_ARGS__); \
-    do                                                                            \
-    {                                                                             \
-        if ((CONCAT(lasterrval, __LINE__)) == (failureval))                           \
-        {                                                                         \
-            check_errwin32_impl(&currenterr, #expression,                         \
-                CONCAT(lasterrval, __LINE__), CONCAT(errcontext, __LINE__),       \
-                __FUNCTION__);                                                    \
-            goto cleanup;                                                         \
-        }                                                                         \
+#define check_win32(vardatatype, expression, failureval, ...)               \
+    log_win32(vardatatype, expression, failureval, __VA_ARGS__);            \
+    do                                                                      \
+    {                                                                       \
+        if ((CONCAT(lasterrval, __LINE__)) == (failureval))                 \
+        {                                                                   \
+            check_errwin32_impl(&currenterr, #expression,                   \
+                CONCAT(lasterrval, __LINE__), CONCAT(errcontext, __LINE__), \
+                __FUNCTION__);                                              \
+            goto cleanup;                                                   \
+        }                                                                   \
     } while (0)
 
 #define CheckBformatStrings 0
 #if CheckBformatStrings && _DEBUG
 #undef bsetfmt
-#define bsetfmt(s, ...) s; printf(__VA_ARGS__)
-#define bformata(s, ...) s; printf(__VA_ARGS__)
+#define bsetfmt(s, ...) \
+    s;                  \
+    printf(__VA_ARGS__)
+#define bformata(s, ...) \
+    s;                   \
+    printf(__VA_ARGS__)
 #define bformat(...) (printf(__VA_ARGS__), hhh)
 #define sv_log_fmt printf
 #endif
 
-
-#define print_and_log(expression)       \
-    do                                       \
-    {                                        \
+#define print_and_log(expression) \
+    do                            \
+    {                             \
         sv_log_write(expression); \
-        puts(expression);                            \
+        puts(expression);         \
     } while (0)
 
-#define print_and_logf(expression, ...)       \
-    do                                       \
-    {                                        \
+#define print_and_logf(expression, ...)        \
+    do                                         \
+    {                                          \
         sv_log_fmt((expression), __VA_ARGS__); \
         printf((expression), __VA_ARGS__);     \
-        puts("");                            \
+        puts("");                              \
     } while (0)
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
@@ -412,13 +420,13 @@ static inline bool limited_while_true_impl(int *counter)
 
 #define s_and_len(s) ("" s ""), (countof32s(s) - 1)
 
-void log_errno_impl(
-    const char *exp, int nerrno, const char *context[4], const char *fn, int lineno);
+void log_errno_impl(const char *exp, int nerrno, const char *context[4],
+    const char *fn, int lineno);
 void check_errno_impl(sv_result *currenterr, const char *exp, int nerrno,
     const char *context[4], const char *fn);
-void log_errwin32_impl(const char *exp, unsigned long nerrno, const char *context[4],
-    const char *fn, int lineno);
-void check_errwin32_impl(sv_result *currenterr, const char *exp, unsigned long nerrno,
-    const char *context[4], const char *fn);
+void log_errwin32_impl(const char *exp, unsigned long nerrno,
+    const char *context[4], const char *fn, int lineno);
+void check_errwin32_impl(sv_result *currenterr, const char *exp,
+    unsigned long nerrno, const char *context[4], const char *fn);
 
 #endif

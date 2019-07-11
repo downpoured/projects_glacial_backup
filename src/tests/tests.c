@@ -14,14 +14,14 @@ GNU General Public License for more details.
 
 #include "tests.h"
 
-void run_all_tests()
+void run_all_tests(void)
 {
     puts("running tests...");
     bstring dir = os_get_tmpdir("tmpglacial_backup");
     bstring btempdir = tests_make_subdir(cstr(dir), "tests");
     bassign(restrict_write_access, dir);
-    check_fatal(blength(btempdir), "could not get test dir at %s",
-        cstr(btempdir));
+    check_fatal(
+        blength(btempdir), "could not get test dir at %s", cstr(btempdir));
 
     const char *tempdir = cstr(btempdir);
     tests_sv_array(tempdir);
@@ -66,9 +66,7 @@ void run_all_tests()
     exit(0);
 }
 
-bool testintimpl(int line,
-    unsigned long long n1,
-    unsigned long long n2)
+bool testintimpl(int line, unsigned long long n1, unsigned long long n2)
 {
     if (n1 == n2)
     {
@@ -81,9 +79,7 @@ bool testintimpl(int line,
     return false;
 }
 
-bool teststrimpl(int line,
-    const char *s1,
-    const char *s2)
+bool teststrimpl(int line, const char *s1, const char *s2)
 {
     if (s_equal(s1, s2))
     {
@@ -96,9 +92,7 @@ bool teststrimpl(int line,
     return false;
 }
 
-bool testlistimpl(int lineno,
-    const char *expected,
-    const bstrlist *list)
+bool testlistimpl(int lineno, const char *expected, const bstrlist *list)
 {
     bstring joined = bjoin_static(list, "|");
     if (s_equal(expected, cstr(joined)))
@@ -107,8 +101,8 @@ bool testlistimpl(int lineno,
         return true;
     }
 
-    bstring s = bformat("line %d, expected \n\n%s, got \n\n%s",
-        lineno, expected, cstr(joined));
+    bstring s = bformat(
+        "line %d, expected \n\n%s, got \n\n%s", lineno, expected, cstr(joined));
 
     alert(cstr(s));
     bdestroy(s);
@@ -116,9 +110,7 @@ bool testlistimpl(int lineno,
     return false;
 }
 
-bool testpslistimpl(int lineno,
-    const char *expected,
-    sv_pseudosplit *list)
+bool testpslistimpl(int lineno, const char *expected, sv_pseudosplit *list)
 {
     bstring joined = bstring_open();
     for (uint32_t i = 0; i < list->splitpoints.length; i++)
@@ -139,8 +131,8 @@ bool testpslistimpl(int lineno,
         return true;
     }
 
-    bstring s = bformat("line %d, expected \n\n%s, got \n\n%s",
-        lineno, expected, cstr(joined));
+    bstring s = bformat(
+        "line %d, expected \n\n%s, got \n\n%s", lineno, expected, cstr(joined));
 
     alert(cstr(s));
     bdestroy(s);
@@ -148,14 +140,13 @@ bool testpslistimpl(int lineno,
     return false;
 }
 
-void expect_err_with_message_impl(sv_result res,
-    const char *msgcontains)
+void expect_err_with_message_impl(sv_result res, const char *msgcontains)
 {
     TestTrue(res.code != 0);
     if (!s_contains(cstr(res.msg), msgcontains))
     {
-        printf("message \n%s\n did not contain '%s'",
-            cstr(res.msg), msgcontains);
+        printf(
+            "message \n%s\n did not contain '%s'", cstr(res.msg), msgcontains);
 
         TestTrue(false);
     }
@@ -163,10 +154,8 @@ void expect_err_with_message_impl(sv_result res,
     sv_result_close(&res);
 }
 
-check_result tmpwritetextfile(const char *dir,
-    const char *leaf,
-    bstring fullpath,
-    const char *contents)
+check_result tmpwritetextfile(
+    const char *dir, const char *leaf, bstring fullpath, const char *contents)
 {
     sv_result currenterr = {};
     bsetfmt(fullpath, "%s%s%s", dir, pathsep, leaf);
@@ -176,9 +165,7 @@ cleanup:
     return currenterr;
 }
 
-sv_result tests_lockfile(bool lock,
-    const char *s,
-    os_lockedfilehandle *handle)
+sv_result tests_lockfile(bool lock, const char *s, os_lockedfilehandle *handle)
 {
     sv_result currenterr = {};
 
@@ -189,8 +176,8 @@ sv_result tests_lockfile(bool lock,
     }
     else if (lock)
     {
-        check(os_lockedfilehandle_open(handle,
-            s, false /* don't allow read */, NULL));
+        check(os_lockedfilehandle_open(
+            handle, s, false /* don't allow read */, NULL));
     }
     else
     {
@@ -244,18 +231,14 @@ void sv_test_hook_close(sv_test_hook *self)
 sv_test_hook sv_test_hook_open(const char *dir)
 {
     sv_test_hook self = {};
-    self.path_group = bformat("%s%suserdata%stest",
-        dir, pathsep, pathsep);
-    self.path_readytoupload = bformat("%s%suserdata%stest%sreadytoupload",
-        dir, pathsep, pathsep, pathsep);
-    self.path_readytoremove = bformat("%s%suserdata%stest%sreadytoremove",
-        dir, pathsep, pathsep, pathsep);
-    self.path_restoreto = bformat("%s%srestoreto",
-        dir, pathsep);
-    self.path_untar = bformat("%s%suntar",
-        dir, pathsep);
-    self.path_userfiles = bformat("%s%sfakeuserfiles",
-        dir, pathsep);
+    self.path_group = bformat("%s%suserdata%stest", dir, pathsep, pathsep);
+    self.path_readytoupload = bformat(
+        "%s%suserdata%stest%sreadytoupload", dir, pathsep, pathsep, pathsep);
+    self.path_readytoremove = bformat(
+        "%s%suserdata%stest%sreadytoremove", dir, pathsep, pathsep, pathsep);
+    self.path_restoreto = bformat("%s%srestoreto", dir, pathsep);
+    self.path_untar = bformat("%s%suntar", dir, pathsep);
+    self.path_userfiles = bformat("%s%sfakeuserfiles", dir, pathsep);
 
     self.path_tmp = bstring_open();
     self.allcontentrows = bstrlist_open();
@@ -276,8 +259,7 @@ sv_result tests_cleardir_impl(const char *tempdir)
     check(os_listdirs(tempdir, list, false));
     for (int i = 0; i < list->qty; i++)
     {
-        check(os_tryuntil_deletefiles(
-            blist_view(list, i), "*"));
+        check(os_tryuntil_deletefiles(blist_view(list, i), "*"));
         check_b(os_remove(blist_view(list, i)),
             "test left too many remaining subdirectories at %s",
             blist_view(list, i));
@@ -299,8 +281,9 @@ sv_result tests_cleardir(const char *tempdir)
     if (ret.code)
     {
         printf("There are files left from a previous failed run. "
-            "Please delete all files and directories in \n%s\n and "
-            "try again. \n\n\nDetails: %s", tempdir, cstr(ret.msg));
+               "Please delete all files and directories in \n%s\n and "
+               "try again. \n\n\nDetails: %s",
+            tempdir, cstr(ret.msg));
         alert("");
     }
 

@@ -23,49 +23,42 @@ svdb_qry svdb_qry_open(svdb_qid qid, svdb_db *db)
     check_fatal(db, "db was null");
     if (!db->qrys[qid])
     {
-        check_warn(svdb_preparequery(db, self.qry_number),
-            "Failed to load qid", exit_on_err);
+        check_warn(svdb_preparequery(db, self.qry_number), "Failed to load qid",
+            exit_on_err);
     }
 
     return self;
 }
 
-check_result svdb_qry_bind_uint(svdb_qry *self,
-    svdb_db *db,
-    int col,
-    uint32_t val)
+check_result svdb_qry_bind_uint(
+    svdb_qry *self, svdb_db *db, int col, uint32_t val)
 {
     sv_result currenterr = {};
-    check_sql(db->db, sqlite3_bind_int(
-        db->qrys[self->qry_number], col, (int32_t)val)); /* allow cast */
+    check_sql(
+        db->db, sqlite3_bind_int(db->qrys[self->qry_number], col, (int32_t)val));
 
 cleanup:
     return currenterr;
 }
 
-check_result svdb_qry_bind_uint64(svdb_qry *self,
-    svdb_db *db,
-    int col,
-    uint64_t val)
+check_result svdb_qry_bind_uint64(
+    svdb_qry *self, svdb_db *db, int col, uint64_t val)
 {
     sv_result currenterr = {};
-    check_sql(db->db, sqlite3_bind_int64(
-        db->qrys[self->qry_number], col, (int64_t)val)); /* allow cast */
+    check_sql(db->db,
+        sqlite3_bind_int64(db->qrys[self->qry_number], col, (int64_t)val));
 
 cleanup:
     return currenterr;
 }
 
-check_result svdb_qry_bindstr(svdb_qry *self,
-    svdb_db *db,
-    int col,
-    const char *str,
-    int length,
-    bool is_static)
+check_result svdb_qry_bindstr(svdb_qry *self, svdb_db *db, int col,
+    const char *str, int length, bool is_static)
 {
     sv_result currenterr = {};
-    check_sql(db->db, sqlite3_bind_text(db->qrys[self->qry_number],
-        col, str, length, is_static ? SQLITE_STATIC : SQLITE_TRANSIENT));
+    check_sql(db->db,
+        sqlite3_bind_text(db->qrys[self->qry_number], col, str, length,
+            is_static ? SQLITE_STATIC : SQLITE_TRANSIENT));
 
 cleanup:
     return currenterr;
@@ -74,17 +67,17 @@ cleanup:
 check_result svdb_preparequery(svdb_db *self, svdb_qid qid)
 {
     sv_result currenterr = {};
-    check_fatal(qid > svdb_qid_none && qid < svdb_qid_max,
-        "invalid qry number %d", qid);
+    check_fatal(
+        qid > svdb_qid_none && qid < svdb_qid_max, "invalid qry number %d", qid);
 
     if (!self->qrys[qid])
     {
         sqlite_qry *prepared = NULL;
         sv_log_fmt("svdb_preparequery for qid #%d", qid);
         check_b(self->qrystrings[qid], "no qid set for #%d", qid);
-        check_sql(self->db, sqlite3_prepare_v2(
-            self->db, self->qrystrings[qid],
-            -1 /* read whole string */, &prepared, 0));
+        check_sql(self->db,
+            sqlite3_prepare_v2(self->db, self->qrystrings[qid],
+                -1 /* read whole string */, &prepared, 0));
 
         check_b(prepared, "%s", self->qrystrings[qid]);
         self->qrys[qid] = prepared;
@@ -97,14 +90,14 @@ cleanup:
 void svdb_qry_get_uint(svdb_qry *self, svdb_db *db, int col, uint32_t *out)
 {
     /* make the column 1-based for consistency with binding */
-    *out = (uint32_t)sqlite3_column_int( /* allow cast */
+    *out = (uint32_t)sqlite3_column_int(/* allow cast */
         db->qrys[self->qry_number], col - 1);
 }
 
 void svdb_qry_get_uint64(svdb_qry *self, svdb_db *db, int col, uint64_t *out)
 {
     /* make the column 1-based for consistency with binding */
-    *out = (uint64_t)sqlite3_column_int64( /* allow cast */
+    *out = (uint64_t)sqlite3_column_int64(/* allow cast */
         db->qrys[self->qry_number], col - 1);
 }
 
@@ -112,13 +105,12 @@ void svdb_qry_get_str(svdb_qry *self, svdb_db *db, int col, bstring s)
 {
     /* make the column 1-based for consistency with binding */
     /* map both sql-null and "" to "" */
-    int len = sqlite3_column_bytes(
-        db->qrys[self->qry_number], col - 1);
+    int len = sqlite3_column_bytes(db->qrys[self->qry_number], col - 1);
 
     if (len)
     {
-        bassignblk(s, sqlite3_column_text(
-            db->qrys[self->qry_number], col - 1), len);
+        bassignblk(
+            s, sqlite3_column_text(db->qrys[self->qry_number], col - 1), len);
     }
     else
     {
@@ -126,10 +118,8 @@ void svdb_qry_get_str(svdb_qry *self, svdb_db *db, int col, bstring s)
     }
 }
 
-check_result svdb_qry_run(svdb_qry *self,
-    svdb_db *db,
-    bool confirm_changes,
-    int *prc)
+check_result svdb_qry_run(
+    svdb_qry *self, svdb_db *db, bool confirm_changes, int *prc)
 {
     sv_result currenterr = {};
     int rc = sqlite3_step(db->qrys[self->qry_number]);
@@ -140,8 +130,7 @@ check_result svdb_qry_run(svdb_qry *self,
 
     check_sql(db->db, rc);
     check_b(!confirm_changes || sqlite3_changes(db->db) > 0,
-        "running qid %s changed no rows",
-        db->qrystrings[self->qry_number]);
+        "running qid %s changed no rows", db->qrystrings[self->qry_number]);
 
 cleanup:
     return currenterr;
@@ -234,8 +223,7 @@ check_result svdb_runsql(svdb_db *self, const char *sql, int len)
     sv_log_write(sql);
     sqlite3_stmt *stmt = NULL;
     check_b(self->db, "no db connection?");
-    check_sql(self->db, sqlite3_prepare_v2(
-        self->db, sql, len, &stmt, NULL));
+    check_sql(self->db, sqlite3_prepare_v2(self->db, sql, len, &stmt, NULL));
 
     check_sql(self->db, sqlite3_step(stmt));
     check_sql(self->db, sqlite3_finalize(stmt));
@@ -253,8 +241,7 @@ check_result svdb_addschema(svdb_db *self)
     check(svdb_txn_open(&txn, self));
     for (int i = 0; i < countof32s(schema_cmds); i++)
     {
-        check(svdb_runsql(
-            self, schema_cmds[i], strlen32s(schema_cmds[i])));
+        check(svdb_runsql(self, schema_cmds[i], strlen32s(schema_cmds[i])));
     }
 
     check(svdb_txn_commit(&txn, self));
@@ -264,9 +251,7 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_getcounthelper(svdb_db *self,
-    svdb_qid qid,
-    uint64_t *ret)
+check_result svdb_getcounthelper(svdb_db *self, svdb_qid qid, uint64_t *ret)
 {
     sv_result currenterr = {};
     svdb_qry qry = svdb_qry_open(qid, self);
@@ -283,8 +268,7 @@ cleanup:
 
 check_result svdb_filescount(svdb_db *self, uint64_t *val)
 {
-    self->qrystrings[svdb_qid_filescount] =
-        "SELECT COUNT(*) FROM TblFilesList";
+    self->qrystrings[svdb_qid_filescount] = "SELECT COUNT(*) FROM TblFilesList";
     return svdb_getcounthelper(self, svdb_qid_filescount, val);
 }
 
@@ -297,15 +281,12 @@ check_result svdb_contentscount(svdb_db *self, uint64_t *val)
 
 check_result svdb_propgetcount(svdb_db *self, uint64_t *val)
 {
-    self->qrystrings[svdb_qid_propcount] =
-        "SELECT COUNT(*) FROM TblProperties";
+    self->qrystrings[svdb_qid_propcount] = "SELECT COUNT(*) FROM TblProperties";
     return svdb_getcounthelper(self, svdb_qid_propcount, val);
 }
 
-check_result svdb_getint(svdb_db *self,
-    const char *propname,
-    int lenpropname,
-    uint32_t *val)
+check_result svdb_getint(
+    svdb_db *self, const char *propname, int lenpropname, uint32_t *val)
 {
     self->qrystrings[svdb_qid_propget] =
         "SELECT PropertyVal FROM TblProperties WHERE PropertyName=?";
@@ -327,10 +308,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_getstr(svdb_db *self,
-    const char *propname,
-    int lenpropname,
-    bstring val)
+check_result svdb_getstr(
+    svdb_db *self, const char *propname, int lenpropname, bstring val)
 {
     sv_result currenterr = {};
     bstrclear(val); /* if row is not found, return "" */
@@ -352,8 +331,8 @@ cleanup:
 
 /* use "record separator" character (ascii 30) as delim */
 #define list_delim "\x1e"
-check_result svdb_getlist(svdb_db *self,
-    const char *propname, int lenpropname, bstrlist *val)
+check_result svdb_getlist(
+    svdb_db *self, const char *propname, int lenpropname, bstrlist *val)
 {
     sv_result currenterr = {};
     bstring s = bstring_open();
@@ -372,10 +351,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_setstr(svdb_db *self,
-    const char *propname,
-    int lenpropname,
-    const char *val)
+check_result svdb_setstr(
+    svdb_db *self, const char *propname, int lenpropname, const char *val)
 {
     self->qrystrings[svdb_qid_propset] =
         "INSERT OR REPLACE INTO TblProperties "
@@ -393,10 +370,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_setint(svdb_db *self,
-    const char *propname,
-    int lenpropname,
-    uint32_t val)
+check_result svdb_setint(
+    svdb_db *self, const char *propname, int lenpropname, uint32_t val)
 {
     self->qrystrings[svdb_qid_propset] =
         "INSERT OR REPLACE INTO TblProperties "
@@ -414,10 +389,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_setlist(svdb_db *self,
-    const char *propname,
-    int lenpropname,
-    const bstrlist *val)
+check_result svdb_setlist(
+    svdb_db *self, const char *propname, int lenpropname, const bstrlist *val)
 {
     sv_result currenterr = {};
     bstring joined = bjoin_static(val, list_delim);
@@ -434,11 +407,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_archives_write_checksum(svdb_db *self,
-    uint64_t archiveid,
-    uint64_t timemodified,
-    uint64_t compaction_cutoff,
-    const char *checksum,
+check_result svdb_archives_write_checksum(svdb_db *self, uint64_t archiveid,
+    uint64_t timemodified, uint64_t compaction_cutoff, const char *checksum,
     const char *filepath)
 {
     sv_result currenterr = {};
@@ -467,9 +437,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_archives_get_checksums(svdb_db *self,
-    bstrlist *filenames,
-    bstrlist *checksums)
+check_result svdb_archives_get_checksums(
+    svdb_db *self, bstrlist *filenames, bstrlist *checksums)
 {
     self->qrystrings[svdb_qid_archivesgetchecksums] =
         "SELECT ChecksumString FROM TblArchives ORDER BY ChecksumString";
@@ -486,8 +455,8 @@ check_result svdb_archives_get_checksums(svdb_db *self,
     {
         svdb_qry_get_str(&qry, self, 1, s);
         bstrlist_splitcstr(temp, cstr(s), '=');
-        check_b(temp->qty == 2,
-            "Expected one '=' in string but got %s", cstr(s));
+        check_b(
+            temp->qty == 2, "Expected one '=' in string but got %s", cstr(s));
 
         bstrlist_append(filenames, temp->entry[0]);
         bstrlist_append(checksums, temp->entry[1]);
@@ -502,9 +471,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_filesbypath(svdb_db *self,
-    const bstring path,
-    sv_file_row *out)
+check_result svdb_filesbypath(
+    svdb_db *self, const bstring path, sv_file_row *out)
 {
     self->qrystrings[svdb_qid_filesbypath] =
         "SELECT FilesListId, ContentLength, ContentsId, LastWriteTime, Status "
@@ -535,9 +503,7 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_collectionsget(svdb_db *self,
-    sv_array *rows,
-    bool get_all)
+check_result svdb_collectionsget(svdb_db *self, sv_array *rows, bool get_all)
 {
     self->qrystrings[svdb_qid_collectionget] =
         "SELECT CollectionId, Time, TimeCompleted, CountTotalFiles, "
@@ -551,7 +517,7 @@ check_result svdb_collectionsget(svdb_db *self,
     check_b(rows->elementsize == sizeof32u(sv_collection_row), "");
     while (rc == SQLITE_ROW)
     {
-        sv_collection_row row = { 0 };
+        sv_collection_row row = {0};
         svdb_qry_get_uint64(&qry, self, 1, &row.id);
         svdb_qry_get_uint64(&qry, self, 2, &row.time);
         svdb_qry_get_uint64(&qry, self, 3, &row.time_finished);
@@ -579,20 +545,17 @@ check_result svdb_collectiongetlast(svdb_db *self, uint64_t *id)
     sv_result currenterr = {};
     sv_array rows = sv_array_open(sizeof32u(sv_collection_row), 0);
     check(svdb_collectionsget(self, &rows, false));
-    sv_log_write(rows.length ?
-        "svdb_collectiongetlast row" : "svdb_collectiongetlast no row");
-    *id = rows.length ?
-        ((sv_collection_row *)sv_array_at(&rows, 0))->id : 0;
+    sv_log_write(rows.length ? "svdb_collectiongetlast row"
+                             : "svdb_collectiongetlast no row");
+    *id = rows.length ? ((sv_collection_row *)sv_array_at(&rows, 0))->id : 0;
 
 cleanup:
     sv_array_close(&rows);
     return currenterr;
 }
 
-check_result svdb_contentsbyhash(svdb_db *self,
-    const hash256 *hash,
-    uint64_t contentslength,
-    sv_content_row *row)
+check_result svdb_contentsbyhash(svdb_db *self, const hash256 *hash,
+    uint64_t contentslength, sv_content_row *row)
 {
     self->qrystrings[svdb_qid_contentsbyhash] =
         "SELECT ContentsId, LastCollectionId, CompressedContentLength, "
@@ -635,9 +598,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_contentsbyid(svdb_db *self,
-    uint64_t contentsid,
-    sv_content_row *row)
+check_result svdb_contentsbyid(
+    svdb_db *self, uint64_t contentsid, sv_content_row *row)
 {
     self->qrystrings[svdb_qid_contentsbyid] =
         "SELECT ContentsHash1, ContentsHash2, ContentsHash3, ContentsHash4, "
@@ -716,9 +678,9 @@ check_result svdb_contentsupdate(svdb_db *db, const sv_content_row *row)
     check(svdb_qry_bind_uint64(&qry, db, 5, row->contents_length));
     check(svdb_qry_bind_uint64(&qry, db, 6, row->compressed_contents_length));
     check(svdb_qry_bind_uint(&qry, db, 7, row->crc32));
-    check(svdb_qry_bind_uint64(&qry, db, 8, make_u64(
-        cast64u32u(row->original_collection),
-        cast64u32u(row->archivenumber))));
+    check(svdb_qry_bind_uint64(&qry, db, 8,
+        make_u64(cast64u32u(row->original_collection),
+            cast64u32u(row->archivenumber))));
 
     check(svdb_qry_bind_uint64(&qry, db, 9, row->most_recent_collection));
     check(svdb_qry_bind_uint64(&qry, db, 10, row->id));
@@ -730,11 +692,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_bulk_delete_helper(svdb_db *self,
-    const sv_array *arr,
-    const char *qry_start,
-    const char *colname,
-    int batchsize)
+check_result svdb_bulk_delete_helper(svdb_db *self, const sv_array *arr,
+    const char *qry_start, const char *colname, int batchsize)
 {
     sv_result currenterr = {};
     const int defaultbatchsize = 200;
@@ -764,17 +723,15 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_contents_bulk_delete(svdb_db *self,
-    const sv_array *arr,
-    int batchsize)
+check_result svdb_contents_bulk_delete(
+    svdb_db *self, const sv_array *arr, int batchsize)
 {
     return svdb_bulk_delete_helper(self, arr,
         "DELETE FROM TblContentsList WHERE ", "ContentsId", batchsize);
 }
 
-check_result svdb_contentsiter(svdb_db *self,
-    void *context,
-    fn_iterate_contents callback)
+check_result svdb_contentsiter(
+    svdb_db *self, void *context, fn_iterate_contents callback)
 {
     self->qrystrings[svdb_qid_contentsiter] =
         "SELECT ContentsHash1, ContentsHash2, ContentsHash3, ContentsHash4, "
@@ -787,7 +744,7 @@ check_result svdb_contentsiter(svdb_db *self,
     check(svdb_qry_run(&qry, self, false, &rc));
     while (rc == SQLITE_ROW)
     {
-        sv_content_row row = { 0 };
+        sv_content_row row = {0};
         uint64_t archiveid = 0;
         svdb_qry_get_uint64(&qry, self, 1, &row.hash.data[0]);
         svdb_qry_get_uint64(&qry, self, 2, &row.hash.data[1]);
@@ -816,11 +773,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_filesinsert(svdb_db *self,
-    const bstring path,
-    uint64_t mostrecentcollection,
-    sv_filerowstatus status,
-    uint64_t *outid)
+check_result svdb_filesinsert(svdb_db *self, const bstring path,
+    uint64_t mostrecentcollection, sv_filerowstatus status, uint64_t *outid)
 {
     self->qrystrings[svdb_qid_filesinsert] =
         "INSERT INTO TblFilesList (Path, ContentLength, ContentsId, "
@@ -828,14 +782,11 @@ check_result svdb_filesinsert(svdb_db *self,
 
     sv_result currenterr = {};
     svdb_qry qry = svdb_qry_open(svdb_qid_filesinsert, self);
-    check(svdb_qry_bindstr(
-        &qry, self, 1, cstr(path), blength(path), false));
+    check(svdb_qry_bindstr(&qry, self, 1, cstr(path), blength(path), false));
     check(svdb_qry_bind_uint64(
         &qry, self, 2, sv_makestatus(mostrecentcollection, status)));
-    check(svdb_qry_run(
-        &qry, self, true, NULL));
-    check(svdb_qry_disconnect(
-        &qry, self));
+    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_disconnect(&qry, self));
 
     if (outid)
     {
@@ -848,9 +799,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_filesupdate(svdb_db *self,
-    const sv_file_row *row,
-    const bstring permissions)
+check_result svdb_filesupdate(
+    svdb_db *self, const sv_file_row *row, const bstring permissions)
 {
     self->qrystrings[svdb_qid_filesupdate] =
         "UPDATE TblFilesList SET ContentLength=?, ContentsId=?, "
@@ -862,13 +812,13 @@ check_result svdb_filesupdate(svdb_db *self,
     check(svdb_qry_bind_uint64(&qry, self, 1, row->contents_length));
     check(svdb_qry_bind_uint64(&qry, self, 2, row->contents_id));
     check(svdb_qry_bind_uint64(&qry, self, 3, row->last_write_time));
-    check(svdb_qry_bind_uint64(&qry, self, 4, sv_makestatus(
-        row->most_recent_collection, row->e_status)));
+    check(svdb_qry_bind_uint64(&qry, self, 4,
+        sv_makestatus(row->most_recent_collection, row->e_status)));
 
     if (permissions && blength(permissions))
     {
-        check(svdb_qry_bindstr(&qry, self, 5, cstr(permissions),
-            blength(permissions), false));
+        check(svdb_qry_bindstr(
+            &qry, self, 5, cstr(permissions), blength(permissions), false));
     }
     else
     {
@@ -884,10 +834,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_files_iter(svdb_db *self,
-    uint64_t status,
-    void *context,
-    fn_iterate_rows callback)
+check_result svdb_files_iter(
+    svdb_db *self, uint64_t status, void *context, fn_iterate_rows callback)
 {
     self->qrystrings[svdb_qid_fileslessthan] =
         "SELECT FilesListId, Path, ContentLength, ContentsId, LastWriteTime, "
@@ -902,7 +850,7 @@ check_result svdb_files_iter(svdb_db *self,
     check(svdb_qry_run(&qry, self, false, &rc));
     while (rc == SQLITE_ROW)
     {
-        sv_file_row row = { 0 };
+        sv_file_row row = {0};
         bstrclear(path);
         svdb_qry_get_uint64(&qry, self, 1, &row.id);
         svdb_qry_get_str(&qry, self, 2, path);
@@ -930,9 +878,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_collectioninsert(svdb_db *self,
-    uint64_t timestarted,
-    uint64_t *rowid)
+check_result svdb_collectioninsert(
+    svdb_db *self, uint64_t timestarted, uint64_t *rowid)
 {
     self->qrystrings[svdb_qid_collectioninsert] =
         "INSERT INTO TblCollections (Time) "
@@ -975,9 +922,8 @@ cleanup:
     return currenterr;
 }
 
-check_result svdb_contents_setlastreferenced(svdb_db *self,
-    uint64_t contentsid,
-    uint64_t collectionid)
+check_result svdb_contents_setlastreferenced(
+    svdb_db *self, uint64_t contentsid, uint64_t collectionid)
 {
     self->qrystrings[svdb_qid_contents_setlastreferenced] =
         "UPDATE TblContentsList SET LastCollectionId=? WHERE ContentsId=?";
@@ -998,21 +944,22 @@ cleanup:
 
 check_result svdb_files_delete(svdb_db *db, const sv_array *arr, int batchsize)
 {
-    return svdb_bulk_delete_helper(db, arr,
-        "DELETE FROM TblFilesList WHERE ", "FilesListId", batchsize);
+    return svdb_bulk_delete_helper(
+        db, arr, "DELETE FROM TblFilesList WHERE ", "FilesListId", batchsize);
 }
 
 check_result svdb_confirmschemaversion(svdb_db *self, const char *path)
 {
     uint32_t version = 0;
     sv_result currenterr = {};
-    sv_result err_get_version = svdb_runsql(self, s_and_len(
-        "SELECT PropertyVal FROM TblProperties WHERE "
-        "PropertyName='SchemaVersion'"));
+    sv_result err_get_version = svdb_runsql(self,
+        s_and_len("SELECT PropertyVal FROM TblProperties WHERE "
+                  "PropertyName='SchemaVersion'"));
 
     if (err_get_version.code)
     {
-        sv_log_write("could not prepare query... let's try adding schema "
+        sv_log_write(
+            "could not prepare query... let's try adding schema "
             "in case this is an empty database left from a previous crash.");
         sv_result_close(&err_get_version);
         sv_result err_add_schema = svdb_addschema(self);
@@ -1020,8 +967,10 @@ check_result svdb_confirmschemaversion(svdb_db *self, const char *path)
     }
 
     check(svdb_getint(self, s_and_len("SchemaVersion"), &version));
-    check_b(version == 1, "database %s could not be loaded, it might be "
-        "from a future version. %d.", path, version);
+    check_b(version == 1,
+        "database %s could not be loaded, it might be "
+        "from a future version. %d.",
+        path, version);
 
 cleanup:
     return currenterr;
@@ -1034,10 +983,10 @@ check_result svdb_connection_openhandle(svdb_db *self)
     sv_log_writes("Opening db handle", cstr(self->path));
 
     /* open db in single-threaded mode. */
-    check_sql(NULL, sqlite3_open_v2(cstr(self->path), &self->db,
-        SQLITE_OPEN_NOMUTEX |
-        SQLITE_OPEN_READWRITE |
-        SQLITE_OPEN_CREATE, NULL));
+    check_sql(NULL,
+        sqlite3_open_v2(cstr(self->path), &self->db,
+            SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+            NULL));
 
     /* set sqlite options. */
     /* benchmarks showed no improvement under WAL mode */
@@ -1170,22 +1119,21 @@ check_result svdb_clear_database_content(svdb_db *self)
     check(svdb_runsql(self, s_and_len("DELETE FROM TblFilesList")));
     check(svdb_runsql(self, s_and_len("DELETE FROM TblContentsList")));
     check(svdb_runsql(self, s_and_len("DELETE FROM TblArchives")));
-    check(svdb_runsql(self, s_and_len(
-        "DELETE FROM sqlite_sequence WHERE name='TblCollections'")));
-    check(svdb_runsql(self, s_and_len(
-        "DELETE FROM sqlite_sequence WHERE name='TblFilesList'")));
-    check(svdb_runsql(self, s_and_len(
-        "DELETE FROM sqlite_sequence WHERE name='TblContentsList'")));
-    check(svdb_runsql(self, s_and_len(
-        "DELETE FROM sqlite_sequence WHERE name='TblArchives'")));
+    check(svdb_runsql(self,
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblCollections'")));
+    check(svdb_runsql(self,
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblFilesList'")));
+    check(svdb_runsql(self,
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblContentsList'")));
+    check(svdb_runsql(self,
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblArchives'")));
 
 cleanup:
     return currenterr;
 }
 
-check_result svdb_collectioninsert_helper(svdb_db *db,
-    uint64_t started,
-    uint64_t finished)
+check_result svdb_collectioninsert_helper(
+    svdb_db *db, uint64_t started, uint64_t finished)
 {
     sv_result currenterr = {};
     sv_collection_row row = {};
@@ -1197,27 +1145,25 @@ cleanup:
     return currenterr;
 }
 
-void svdb_files_row_string(const sv_file_row *row,
-    const char *path,
-    const char *permissions,
-    bstring s)
+void svdb_files_row_string(
+    const sv_file_row *row, const char *path, const char *permissions, bstring s)
 {
-    bsetfmt(s, "contents_length=%llu, contents_id=%llu, last_write_time=%llu, "
+    bsetfmt(s,
+        "contents_length=%llu, contents_id=%llu, last_write_time=%llu, "
         "flags=%s, most_recent_collection=%llu, e_status=%d, id=%llu%s",
         castull(row->contents_length), castull(row->contents_id),
         castull(row->last_write_time), permissions,
-        castull(row->most_recent_collection),
-        row->e_status, castull(row->id), path);
+        castull(row->most_recent_collection), row->e_status, castull(row->id),
+        path);
 }
 
-void svdb_collectiontostring(const sv_collection_row *row,
-    bool verbose,
-    bool everyfield,
-    bstring s)
+void svdb_collectiontostring(
+    const sv_collection_row *row, bool verbose, bool everyfield, bstring s)
 {
     if (everyfield)
     {
-        bsetfmt(s, "time=%llu, time_finished=%llu, count_total_files=%llu, "
+        bsetfmt(s,
+            "time=%llu, time_finished=%llu, count_total_files=%llu, "
             "count_new_contents=%llu, count_new_contents_bytes=%llu, id=%llu",
             castull(row->time), castull(row->time_finished),
             castull(row->count_total_files), castull(row->count_new_contents),
@@ -1229,9 +1175,9 @@ void svdb_collectiontostring(const sv_collection_row *row,
         struct tm *ptime = localtime((time_t *)&row->time_finished);
         if (ptime)
         {
-            bformata(s, "%04d/%02d/%02d   %02d:%02d\n",
-                ptime->tm_year + 1900, ptime->tm_mon + 1, ptime->tm_mday,
-                ptime->tm_hour, ptime->tm_min);
+            bformata(s, "%04d/%02d/%02d   %02d:%02d\n", ptime->tm_year + 1900,
+                ptime->tm_mon + 1, ptime->tm_mday, ptime->tm_hour,
+                ptime->tm_min);
         }
 
         if (verbose)
@@ -1251,20 +1197,17 @@ void svdb_contents_row_string(const sv_content_row *row, bstring s)
     bassigncstr(s, "hash=");
     bconcat(s, shash);
     bdestroy(shash);
-    bformata(s, ", crc32=%x, contents_length=%llu,%llu, "
+    bformata(s,
+        ", crc32=%x, contents_length=%llu,%llu, "
         "most_recent_collection=%llu, original_collection=%u, "
         "archivenumber=%u, id=%llu",
-        row->crc32,
-        castull(row->contents_length),
+        row->crc32, castull(row->contents_length),
         castull(row->compressed_contents_length),
-        castull(row->most_recent_collection),
-        row->original_collection,
-        row->archivenumber,
-        castull(row->id));
+        castull(row->most_recent_collection), row->original_collection,
+        row->archivenumber, castull(row->id));
 }
 
 const uint64_t svdb_all_files = INT64_MAX;
 extern inline sv_filerowstatus sv_getstatus(uint64_t status);
 extern inline uint64_t sv_collectionidfromstatus(uint64_t status);
-extern inline uint64_t sv_makestatus(uint64_t collectionid,
-    sv_filerowstatus st);
+extern inline uint64_t sv_makestatus(uint64_t collectionid, sv_filerowstatus st);

@@ -14,16 +14,14 @@ GNU General Public License for more details.
 
 #include "util_files.h"
 
-
 /* globals that can be altered by tests */
 uint32_t max_tries = 10;
 uint32_t sleep_between_tries = 500;
 
 #if __linux__
-#include <utime.h>
 #include <sys/sendfile.h>
 #include <sys/wait.h>
-
+#include <utime.h>
 
 uint64_t os_getfilesize(const char *filepath)
 {
@@ -52,7 +50,7 @@ bool os_setmodifiedtime_nearestsecond(const char *filepath, uint64_t t)
     log_errno_to(retstat, stat64(filepath, &st), filepath);
     if (retstat >= 0)
     {
-        struct utimbuf new_times = { 0 };
+        struct utimbuf new_times = {0};
         new_times.actime = st.st_atime;
         new_times.modtime = (time_t)t;
         int rettime = 0;
@@ -99,12 +97,13 @@ bool os_file_or_dir_exists(const char *filepath, bool *is_file)
     return n == 0;
 }
 
-check_result os_copy_impl(const char *s1,
-    const char *s2,
-    bool overwrite_ok)
+check_result os_copy_impl(const char *s1, const char *s2, bool overwrite_ok)
 {
     sv_result currenterr = {};
-    enum { bufsize = 4096 };
+    enum
+    {
+        bufsize = 4096
+    };
     char buffer[bufsize];
 
     confirm_writable(s2);
@@ -117,14 +116,13 @@ check_result os_copy_impl(const char *s1,
         size_t numread = fread(buffer, 1, bufsize, f1);
         if (numread == 0)
         {
-            check_b(feof(f1) || !ferror(f1),
-                "error writing %s to %s", s1, s2);
+            check_b(feof(f1) || !ferror(f1), "error writing %s to %s", s1, s2);
 
             break;
         }
 
-        check_b(fwrite(buffer, numread, 1, f2) == 1,
-            "error writing %s to %s", s1, s2);
+        check_b(fwrite(buffer, numread, 1, f2) == 1, "error writing %s to %s",
+            s1, s2);
     }
 
 cleanup:
@@ -208,8 +206,8 @@ bool os_move(const char *s1, const char *s2, bool overwrite_ok)
         if (os_copy(s1, s2, overwrite_ok))
         {
             sv_log_fmt("used copy+delete to move %s, %s", s1, s2);
-            check_fatal(os_getfilesize(s1) == os_getfilesize(s2),
-                "%s, %s", s1, s2);
+            check_fatal(
+                os_getfilesize(s1) == os_getfilesize(s2), "%s, %s", s1, s2);
             os_remove(s1);
             ret = 0;
         }
@@ -219,9 +217,7 @@ bool os_move(const char *s1, const char *s2, bool overwrite_ok)
     return ret == 0;
 }
 
-check_result sv_file_open(sv_file *self,
-    const char *path,
-    const char *mode)
+check_result sv_file_open(sv_file *self, const char *path, const char *mode)
 {
     sv_result currenterr = {};
     errno = 0;
@@ -236,11 +232,8 @@ cleanup:
     return currenterr;
 }
 
-check_result os_lockedfilehandle_open(
-    os_lockedfilehandle *self,
-    const char *path,
-    bool allowread,
-    bool *filenotfound)
+check_result os_lockedfilehandle_open(os_lockedfilehandle *self,
+    const char *path, bool allowread, bool *filenotfound)
 {
     sv_result currenterr = {};
     bstring tmp = bstring_open();
@@ -253,22 +246,19 @@ check_result os_lockedfilehandle_open(
 
     errno = 0;
     self->fd = open(path, O_RDONLY | O_BINARY);
-    if (self->fd < 0 && errno == ENOENT &&
-        !os_file_exists(path) && filenotfound)
+    if (self->fd < 0 && errno == ENOENT && !os_file_exists(path) && filenotfound)
     {
         set_self_zero();
         *filenotfound = true;
     }
     else
     {
-        char errorname[BUFSIZ] = { 0 };
+        char errorname[BUFSIZ] = {0};
         os_errno_to_buffer(errno, errorname, countof(errorname));
-        check_b(self->fd >= 0,
-            "While trying to open %s, got %s(%d)", path, errorname, errno);
-        check_b(self->fd > 0,
-            "expect fd to be > 0");
-        int sharing = allowread ?
-            (LOCK_SH | LOCK_NB) : (LOCK_EX | LOCK_NB);
+        check_b(self->fd >= 0, "While trying to open %s, got %s(%d)", path,
+            errorname, errno);
+        check_b(self->fd > 0, "expect fd to be > 0");
+        int sharing = allowread ? (LOCK_SH | LOCK_NB) : (LOCK_EX | LOCK_NB);
         check_errno(flock(self->fd, sharing), path);
     }
 
@@ -279,11 +269,8 @@ cleanup:
     return currenterr;
 }
 
-check_result os_lockedfilehandle_stat(
-    os_lockedfilehandle *self,
-    uint64_t *size,
-    uint64_t *modtime,
-    bstring permissions)
+check_result os_lockedfilehandle_stat(os_lockedfilehandle *self, uint64_t *size,
+    uint64_t *modtime, bstring permissions)
 {
     sv_result currenterr = {};
     struct stat64 st = {};
@@ -309,13 +296,13 @@ bool os_isabspath(const char *s)
     return s && s[0] == '/';
 }
 
-bstring os_getthisprocessdir()
+bstring os_getthisprocessdir(void)
 {
     errno = 0;
-    char buffer[PATH_MAX] = { 0 };
+    char buffer[PATH_MAX] = {0};
     int len = 0;
-    log_errno_to(len, cast64s32s(readlink(
-        "/proc/self/exe", buffer, sizeof(buffer) - 1)));
+    log_errno_to(
+        len, cast64s32s(readlink("/proc/self/exe", buffer, sizeof(buffer) - 1)));
 
     if (len >= 0)
     {
@@ -332,7 +319,7 @@ bstring os_getthisprocessdir()
     return bstring_open();
 }
 
-bstring os_get_create_appdatadir()
+bstring os_get_create_appdatadir(void)
 {
     bstring ret = bstring_open();
     char *confighome = getenv("XDG_CONFIG_HOME");
@@ -361,14 +348,12 @@ bstring os_get_create_appdatadir()
     return ret;
 }
 
-bool os_detect_other_instances(const char *path,
-    int *out_code)
+bool os_detect_other_instances(const char *path, int *out_code)
 {
     /* provide O_CLOEXEC so that the duplicate is closed on exec(). */
     confirm_writable(path);
     int pid_file = 0;
-    log_errno_to(pid_file, open(
-        path, O_CREAT | O_RDWR | O_CLOEXEC, 0666), path);
+    log_errno_to(pid_file, open(path, O_CREAT | O_RDWR | O_CLOEXEC, 0666), path);
     if (pid_file < 0)
     {
         *out_code = 1;
@@ -419,7 +404,7 @@ void os_clock_gettime(int64_t *s, int32_t *ms)
     struct timespec tm;
     (void)clock_gettime(CLOCK_REALTIME, &tm);
     *s = (int64_t)tm.tv_sec;
-    *ms = (int32_t)(tm.tv_nsec / (1000 * 1000)); /* allow cast */
+    *ms = (int32_t)(tm.tv_nsec / (1000 * 1000));
 }
 
 bool os_get_short_path(const char *path, bstring shortpath)
@@ -433,8 +418,7 @@ check_result os_binarypath(const char *binname, bstring out)
 {
     sv_result currenterr = {};
     const char *path = getenv("PATH");
-    check_b(path && path[0] != '\0',
-        "Path environment variable not found.");
+    check_b(path && path[0] != '\0', "Path environment variable not found.");
     sv_pseudosplit spl = sv_pseudosplit_open(path);
     sv_pseudosplit_split(&spl, ':');
     check(os_binarypath_impl(&spl, binname, out));
@@ -447,7 +431,7 @@ cleanup:
 bstring os_get_tmpdir(const char *subdirname)
 {
     bstring ret = bstring_open();
-    char *candidates[] = { "TMPDIR", "TMP", "TEMP", "TEMPDIR" };
+    char *candidates[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
     for (int i = 0; i < countof(candidates); i++)
     {
         const char *val = getenv(candidates[i]);
@@ -462,7 +446,7 @@ bstring os_get_tmpdir(const char *subdirname)
         }
     }
 
-    char *fallback_candidates[] = { P_tmpdir, "/tmp" };
+    char *fallback_candidates[] = {P_tmpdir, "/tmp"};
     for (int i = 0; i < countof(fallback_candidates); i++)
     {
         const char *val = fallback_candidates[i];
@@ -480,7 +464,7 @@ bstring os_get_tmpdir(const char *subdirname)
     return ret;
 }
 
-void os_init()
+void os_init(void)
 {
     /* not needed in linux */
 }
@@ -489,14 +473,11 @@ void os_get_permissions(const struct stat64 *st, bstring permissions)
 {
     /* don't save the type-of-file */
     mode_t permissions_only = st->st_mode & 0x0fff;
-    bsetfmt(permissions, "p%x|g%x|u%x",
-        (uint32_t)permissions_only, /* allow cast */
-        (uint32_t)st->st_gid, /* allow cast */
-        (uint32_t)st->st_uid); /* allow cast */
+    bsetfmt(permissions, "p%x|g%x|u%x", (uint32_t)permissions_only,
+        (uint32_t)st->st_gid, (uint32_t)st->st_uid);
 }
 
-check_result os_set_permissions(const char *filepath,
-    const bstring permissions)
+check_result os_set_permissions(const char *filepath, const bstring permissions)
 {
     sv_result currenterr = {};
     bstrlist *list = bstrlist_open();
@@ -508,38 +489,30 @@ check_result os_set_permissions(const char *filepath,
         {
             if (blist_view(list, i)[0] == 'p')
             {
-                log_b(uintfromstrhex(
-                    blist_view(list, i) + 1, &perms),
-                    "could not parse permissions, %s %s",
-                    filepath, cstr(permissions));
+                log_b(uintfromstrhex(blist_view(list, i) + 1, &perms),
+                    "could not parse permissions, %s %s", filepath,
+                    cstr(permissions));
             }
             else if (blist_view(list, i)[0] == 'g')
             {
-                log_b(uintfromstrhex(
-                    blist_view(list, i) + 1, &grp),
-                    "could not parse group, %s %s",
-                    filepath, cstr(permissions));
+                log_b(uintfromstrhex(blist_view(list, i) + 1, &grp),
+                    "could not parse group, %s %s", filepath, cstr(permissions));
             }
             else if (blist_view(list, i)[0] == 'u')
             {
-                log_b(uintfromstrhex(
-                    blist_view(list, i) + 1, &user),
-                    "could not parse user, %s %s",
-                    filepath, cstr(permissions));
+                log_b(uintfromstrhex(blist_view(list, i) + 1, &user),
+                    "could not parse user, %s %s", filepath, cstr(permissions));
             }
             else
             {
-                log_b(0, "unknown field, %s %s",
-                    filepath, cstr(permissions));
+                log_b(0, "unknown field, %s %s", filepath, cstr(permissions));
             }
         }
 
         if (grp != UINT64_MAX && user != UINT64_MAX)
         {
-            sv_log_fmt("chown %s(%lld,%lld)",
-                filepath,
-                castull(grp),
-                castull(user));
+            sv_log_fmt(
+                "chown %s(%lld,%lld)", filepath, castull(grp), castull(user));
             check_errno(chown(filepath, (uid_t)user, (gid_t)grp));
         }
 
@@ -557,7 +530,7 @@ cleanup:
 
 bool os_try_set_readable(const char *filepath, bool setreadable)
 {
-    struct stat64 st = { 0 };
+    struct stat64 st = {0};
     int result = 0;
     log_errno_to(result, stat64(filepath, &st));
     if (result == 0)
@@ -590,10 +563,7 @@ bool os_try_set_readable(const char *filepath, bool setreadable)
 }
 
 static check_result os_recurse_impl_dir(os_recurse_params *params,
-    bstrlist *dirs,
-    bool *retriable_err,
-    bstring currentdir,
-    bstring tmpfullpath,
+    bstrlist *dirs, bool *retriable_err, bstring currentdir, bstring tmpfullpath,
     bstring permissions)
 {
     sv_result currenterr = {};
@@ -606,8 +576,8 @@ static check_result os_recurse_impl_dir(os_recurse_params *params,
         *retriable_err = true;
         char buf[BUFSIZ] = "";
         os_errno_to_buffer(errno, buf, countof(buf));
-        check_b(0, "Could not list \n%s\ncode %s (%d)",
-            cstr(currentdir), buf, errno);
+        check_b(0, "Could not list \n%s\ncode %s (%d)", cstr(currentdir), buf,
+            errno);
     }
 
     while (dir)
@@ -621,13 +591,14 @@ static check_result os_recurse_impl_dir(os_recurse_params *params,
                 *retriable_err = true;
                 char buf[BUFSIZ] = "";
                 os_errno_to_buffer(errno, buf, countof(buf));
-                check_b(0, "Could not continue listing \n%s\n"
-                    "code %s %d", cstr(currentdir), buf, errno);
+                check_b(0,
+                    "Could not continue listing \n%s\n"
+                    "code %s %d",
+                    cstr(currentdir), buf, errno);
             }
             break;
         }
-        else if (s_equal(".", entry->d_name) ||
-            s_equal("..", entry->d_name))
+        else if (s_equal(".", entry->d_name) || s_equal("..", entry->d_name))
         {
             continue;
         }
@@ -645,39 +616,30 @@ static check_result os_recurse_impl_dir(os_recurse_params *params,
         {
             bstrlist_append(dirs, tmpfullpath);
             check(params->callback(
-                params->context,
-                tmpfullpath,
-                UINT64_MAX,
-                UINT64_MAX,
-                NULL));
+                params->context, tmpfullpath, UINT64_MAX, UINT64_MAX, NULL));
         }
         else if (entry->d_type == DT_REG)
         {
             /* get file info*/
-            struct stat64 st = { 0 };
+            struct stat64 st = {0};
             errno = 0;
             int statresult = stat64(cstr(tmpfullpath), &st);
             if (statresult < 0 && errno == ENOENT)
             {
-                sv_log_fmt("note, ENOENT seen during iteration %s",
-                    cstr(tmpfullpath));
+                sv_log_fmt(
+                    "note, ENOENT seen during iteration %s", cstr(tmpfullpath));
             }
             else if (statresult < 0)
             {
-                sv_log_fmt("stat failed, %s errno=%d",
-                    cstr(tmpfullpath), errno);
+                sv_log_fmt("stat failed, %s errno=%d", cstr(tmpfullpath), errno);
                 bstr_catstatic(tmpfullpath, " could not access stat");
                 bstrlist_append(params->messages, tmpfullpath);
             }
             else
             {
                 os_get_permissions(&st, permissions);
-                check(params->callback(
-                    params->context,
-                    tmpfullpath,
-                    st.st_mtime,
-                    cast64s64u(st.st_size),
-                    permissions));
+                check(params->callback(params->context, tmpfullpath, st.st_mtime,
+                    cast64s64u(st.st_size), permissions));
             }
         }
     }
@@ -690,11 +652,8 @@ cleanup:
     return currenterr;
 }
 
-check_result os_recurse_impl(os_recurse_params *params,
-    int currentdepth,
-    bstring currentdir,
-    bstring tmpfullpath,
-    bstring permissions)
+check_result os_recurse_impl(os_recurse_params *params, int currentdepth,
+    bstring currentdir, bstring tmpfullpath, bstring permissions)
 {
     sv_result currenterr = {};
     sv_result attempt_dir = {};
@@ -704,8 +663,8 @@ check_result os_recurse_impl(os_recurse_params *params,
         /* traverse just this directory */
         bool retriable_err = false;
         sv_result_close(&attempt_dir);
-        attempt_dir = os_recurse_impl_dir(params, dirs,
-            &retriable_err, currentdir, tmpfullpath, permissions);
+        attempt_dir = os_recurse_impl_dir(
+            params, dirs, &retriable_err, currentdir, tmpfullpath, permissions);
         if (!attempt_dir.code || !retriable_err)
         {
             check(attempt_dir);
@@ -729,8 +688,8 @@ check_result os_recurse_impl(os_recurse_params *params,
     {
         for (uint32_t i = 0; i < dirs->qty; i++)
         {
-            check(os_recurse_impl(params, currentdepth + 1,
-                dirs->entry[i], tmpfullpath, permissions));
+            check(os_recurse_impl(params, currentdepth + 1, dirs->entry[i],
+                tmpfullpath, permissions));
         }
     }
     else if (params->max_recursion_depth != 0)
@@ -749,10 +708,9 @@ check_result os_recurse(os_recurse_params *params)
     bstring currentdir = bfromcstr(params->root);
     bstring tmpfullpath = bstring_open();
     bstring permissions = bstring_open();
-    check_b(os_isabspath(params->root),
-        "expected full path but got %s", params->root);
-    check(os_recurse_impl(
-        params, 0, currentdir, tmpfullpath, permissions));
+    check_b(os_isabspath(params->root), "expected full path but got %s",
+        params->root);
+    check(os_recurse_impl(params, 0, currentdir, tmpfullpath, permissions));
 
 cleanup:
     bdestroy(currentdir);
@@ -761,11 +719,8 @@ cleanup:
     return currenterr;
 }
 
-void os_run_process_child(const char *path,
-    const char *const args[],
-    const char *stdout_to_file,
-    int child_to_parent[2],
-    int *rcode)
+void os_run_process_child(const char *path, const char *const args[],
+    const char *stdout_to_file, int child_to_parent[2], int *rcode)
 {
     int r = dup2(child_to_parent[1], STDOUT_FILENO);
     if (r < 0)
@@ -803,28 +758,28 @@ cleanup:
 }
 
 check_result os_run_process_parent(
-    bstring getoutput,
-    const char *stdout_to_file,
-    int child_to_parent[2])
+    bstring getoutput, const char *stdout_to_file, int child_to_parent[2])
 {
     sv_result currenterr = {};
     int read_result = -1;
     int stdout_to_disk = -1;
-    enum {buffersize = 4096};
+    enum
+    {
+        buffersize = 4096
+    };
     char buffer[buffersize] = "";
     if (stdout_to_file)
     {
-        check_errno(stdout_to_disk, open(
-            stdout_to_file,
-            O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0777));
+        check_errno(stdout_to_disk,
+            open(stdout_to_file, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0777));
     }
 
     bstrclear(getoutput);
     close_set_invalid(child_to_parent[1]);
     while (true)
     {
-        log_errno_to(read_result, cast64s32s(read(
-            child_to_parent[0], buffer, countof(buffer))));
+        log_errno_to(read_result,
+            cast64s32s(read(child_to_parent[0], buffer, countof(buffer))));
 
         if (read_result <= 0)
         {
@@ -832,8 +787,8 @@ check_result os_run_process_parent(
         }
         else if (stdout_to_file)
         {
-            check_errno(cast64s32s(write(
-                stdout_to_disk, buffer, cast32s32u(read_result))));
+            check_errno(cast64s32s(
+                write(stdout_to_disk, buffer, cast32s32u(read_result))));
         }
         else
         {
@@ -848,14 +803,9 @@ cleanup:
     return currenterr;
 }
 
-check_result os_run_process(const char *path,
-    const char *const args[],
-    bstring getoutput,
-    unused(bstring),
-    unused(bool),
-    const char *stdout_to_file,
-    os_lockedfilehandle *providestdin,
-    int *retcode)
+check_result os_run_process(const char *path, const char *const args[],
+    bstring getoutput, unused(bstring), unused(bool), const char *stdout_to_file,
+    os_lockedfilehandle *providestdin, int *retcode)
 {
     sv_result currenterr = {};
     const int READ = 0, WRITE = 1;
@@ -863,20 +813,20 @@ check_result os_run_process(const char *path,
 
     pid_t pid = 0;
     check_b(!providestdin, "not supported");
-    check_b(os_isabspath(path),
-        "os_run_process needs full path but given %s.", path);
+    check_b(os_isabspath(path), "os_run_process needs full path but given %s.",
+        path);
     check_b(os_file_exists(path),
         "os_run_process needs existing file but given %s.", path);
     check_errno(pipe(child_to_parent));
     int forkresult = 0;
-    log_errno_to(forkresult,  fork());
+    log_errno_to(forkresult, fork());
     check_b(forkresult >= 0);
     if (forkresult == 0)
     {
         /* child */
         int rcode = 0;
-        os_run_process_child(path, args, stdout_to_file,
-            child_to_parent, &rcode);
+        os_run_process_child(
+            path, args, stdout_to_file, child_to_parent, &rcode);
 
         /* this line is not reached unless an error occurs. */
         exit(rcode);
@@ -887,8 +837,8 @@ check_result os_run_process(const char *path,
         int status = -1;
 
         /* need to waitpid() before going to cleanup and closing handles. */
-        sv_result r = os_run_process_parent(getoutput, stdout_to_file,
-            child_to_parent);
+        sv_result r =
+            os_run_process_parent(getoutput, stdout_to_file, child_to_parent);
         check_errno(waitpid(pid, &status, 0));
         *retcode = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
         check(r);
@@ -921,7 +871,7 @@ bstring parse_cmd_line_args(int argc, char **argv, bool *is_low)
 #include <VersionHelpers.h>
 const int MaxUtf8BytesPerCodepoint = 4;
 
-void os_init()
+void os_init(void)
 {
     check_fatal(IsWindowsVistaOrGreater(),
         "We do not support an OS earlier than Windows Vista.");
@@ -938,12 +888,10 @@ void wide_to_utf8(const wchar_t *wide, bstring output)
     bstring_calloc(output, widelen * MaxUtf8BytesPerCodepoint);
     SetLastError(0);
     int written = WideCharToMultiByte(CP_UTF8, 0, wide, widelen,
-        (char *)output->data, widelen * MaxUtf8BytesPerCodepoint,
-        NULL, NULL);
+        (char *)output->data, widelen * MaxUtf8BytesPerCodepoint, NULL, NULL);
 
     check_fatal(written > 0 || wide[0] == L'\0',
-        "to_utf8 failed on string %S lasterr=%lu",
-        wide, GetLastError());
+        "to_utf8 failed on string %S lasterr=%lu", wide, GetLastError());
     output->slen = written;
 }
 
@@ -979,8 +927,8 @@ bool os_file_or_dir_exists(const char *filepath, bool *is_file)
     SetLastError(0);
     DWORD file_attr = GetFileAttributesW(wcstr(wpath));
     log_b(file_attr != INVALID_FILE_ATTRIBUTES ||
-        GetLastError() == ERROR_FILE_NOT_FOUND ||
-        GetLastError() == ERROR_PATH_NOT_FOUND,
+            GetLastError() == ERROR_FILE_NOT_FOUND ||
+            GetLastError() == ERROR_PATH_NOT_FOUND,
         "%s %lu", filepath, GetLastError());
     if (is_file)
     {
@@ -994,10 +942,10 @@ bool os_file_or_dir_exists(const char *filepath, bool *is_file)
 uint64_t os_getfilesize(const char *s)
 {
     sv_wstr ws = sv_wstr_widen(s);
-    WIN32_FILE_ATTRIBUTE_DATA data = { 0 };
+    WIN32_FILE_ATTRIBUTE_DATA data = {0};
     BOOL ret = FALSE;
-    log_win32_to(ret, GetFileAttributesEx(wcstr(ws),
-        GetFileExInfoStandard, &data), FALSE, s);
+    log_win32_to(ret,
+        GetFileAttributesEx(wcstr(ws), GetFileExInfoStandard, &data), FALSE, s);
     sv_wstr_close(&ws);
     if (!ret)
     {
@@ -1013,10 +961,10 @@ uint64_t os_getfilesize(const char *s)
 uint64_t os_getmodifiedtime(const char *s)
 {
     sv_wstr ws = sv_wstr_widen(s);
-    WIN32_FILE_ATTRIBUTE_DATA data = { 0 };
+    WIN32_FILE_ATTRIBUTE_DATA data = {0};
     BOOL ret = FALSE;
-    log_win32_to(ret, GetFileAttributesEx(
-        wcstr(ws), GetFileExInfoStandard, &data), FALSE, s);
+    log_win32_to(ret,
+        GetFileAttributesEx(wcstr(ws), GetFileExInfoStandard, &data), FALSE, s);
     sv_wstr_close(&ws);
     if (!ret)
     {
@@ -1034,20 +982,17 @@ bool os_setmodifiedtime_nearestsecond(const char *s, uint64_t t)
     bool ret = false;
     sv_wstr ws = sv_wstr_widen(s);
     HANDLE handle = 0;
-    log_win32_to(handle, CreateFileW(
-        wcstr(ws),
-        GENERIC_READ | FILE_WRITE_ATTRIBUTES,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL), INVALID_HANDLE_VALUE, s);
+    log_win32_to(handle,
+        CreateFileW(wcstr(ws), GENERIC_READ | FILE_WRITE_ATTRIBUTES,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL, NULL),
+        INVALID_HANDLE_VALUE, s);
 
     if (handle != INVALID_HANDLE_VALUE)
     {
-        FILETIME ft = { lower32(t), upper32(t) };
-        log_win32_to(ret, SetFileTime(
-            handle, NULL, NULL, &ft) != FALSE, false, s);
+        FILETIME ft = {lower32(t), upper32(t)};
+        log_win32_to(
+            ret, SetFileTime(handle, NULL, NULL, &ft) != FALSE, false, s);
     }
 
     CloseHandleNull(&handle);
@@ -1072,8 +1017,7 @@ bool os_create_dir(const char *s)
     {
         sv_wstr ws = sv_wstr_widen(s);
         BOOL ret = FALSE;
-        log_win32_to(ret, CreateDirectoryW(
-            wcstr(ws), NULL), FALSE, s);
+        log_win32_to(ret, CreateDirectoryW(wcstr(ws), NULL), FALSE, s);
         sv_wstr_close(&ws);
         return ret != FALSE;
     }
@@ -1092,8 +1036,8 @@ bool os_copy(const char *s1, const char *s2, bool overwrite_ok)
     }
     else
     {
-        log_win32_to(ret, CopyFileW(
-            wcstr(ws1), wcstr(ws2), !overwrite_ok), FALSE, s1, s2);
+        log_win32_to(ret, CopyFileW(wcstr(ws1), wcstr(ws2), !overwrite_ok),
+            FALSE, s1, s2);
     }
 
     sv_wstr_close(&ws1);
@@ -1116,8 +1060,8 @@ bool os_move(const char *s1, const char *s2, bool overwrite_ok)
     {
         DWORD flags = overwrite_ok ? MOVEFILE_REPLACE_EXISTING : 0UL;
         flags |= MOVEFILE_COPY_ALLOWED; /* if on a separate drive */
-        log_win32_to(ret, MoveFileExW(
-            wcstr(ws1), wcstr(ws2), flags), FALSE, s1, s2);
+        log_win32_to(
+            ret, MoveFileExW(wcstr(ws1), wcstr(ws2), flags), FALSE, s1, s2);
     }
 
     sv_wstr_close(&ws1);
@@ -1144,11 +1088,8 @@ cleanup:
     return currenterr;
 }
 
-check_result os_lockedfilehandle_open(
-    os_lockedfilehandle *self,
-    const char *path,
-    bool allowread,
-    bool *filenotfound)
+check_result os_lockedfilehandle_open(os_lockedfilehandle *self,
+    const char *path, bool allowread, bool *filenotfound)
 {
     sv_result currenterr = {};
     bstring tmp = bstring_open();
@@ -1162,9 +1103,8 @@ check_result os_lockedfilehandle_open(
 
     SetLastError(0);
     DWORD sharing = allowread ? FILE_SHARE_READ : 0;
-    self->os_handle = CreateFileW(
-        wcstr(wpath), GENERIC_READ, sharing,
-        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    self->os_handle = CreateFileW(wcstr(wpath), GENERIC_READ, sharing, NULL,
+        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (self->os_handle == INVALID_HANDLE_VALUE && filenotfound &&
         (GetLastError() == ERROR_FILE_NOT_FOUND ||
@@ -1177,10 +1117,11 @@ check_result os_lockedfilehandle_open(
         char buf[BUFSIZ] = "";
         os_win32err_to_buffer(GetLastError(), buf, countof(buf));
         check_b(self->os_handle,
-            "We could not lock the file %s because of %s (%lu)",
-            path, buf, GetLastError());
-        log_errno_to(self->fd,  _open_osfhandle(
-            (intptr_t)self->os_handle, O_RDONLY | O_BINARY), path);
+            "We could not lock the file %s because of %s (%lu)", path, buf,
+            GetLastError());
+        log_errno_to(self->fd,
+            _open_osfhandle((intptr_t)self->os_handle, O_RDONLY | O_BINARY),
+            path);
         check_b(self->fd >= 0, "open()");
     }
 
@@ -1190,23 +1131,20 @@ cleanup:
     return currenterr;
 }
 
-check_result os_lockedfilehandle_stat(
-    os_lockedfilehandle *self,
-    uint64_t *size,
-    uint64_t *modtime,
-    bstring permissions)
+check_result os_lockedfilehandle_stat(os_lockedfilehandle *self, uint64_t *size,
+    uint64_t *modtime, bstring permissions)
 {
     sv_result currenterr = {};
     LARGE_INTEGER filesize = {};
-    FILETIME ftcreate = { 0 }, ftaccess = { 0 }, ftwrite = { 0 };
+    FILETIME ftcreate = {0}, ftaccess = {0}, ftwrite = {0};
 
     BOOL ret = FALSE;
-    log_win32_to(ret, GetFileSizeEx(
-        self->os_handle, &filesize), FALSE, cstr(self->loggingcontext));
+    log_win32_to(ret, GetFileSizeEx(self->os_handle, &filesize), FALSE,
+        cstr(self->loggingcontext));
     check_b(ret, "GetFileSizeEx");
-    log_win32_to(ret, GetFileTime(
-        self->os_handle, &ftcreate, &ftaccess, &ftwrite),
-        FALSE, cstr(self->loggingcontext));
+    log_win32_to(ret,
+        GetFileTime(self->os_handle, &ftcreate, &ftaccess, &ftwrite), FALSE,
+        cstr(self->loggingcontext));
     check_b(ret, "GetFileTime");
 
     *size = cast64s64u(filesize.QuadPart);
@@ -1231,21 +1169,20 @@ bool os_isabspath(const char *s)
     return s && s[0] != '\0' && s[1] == ':' && s[2] == '\\';
 }
 
-bstring os_getthisprocessdir()
+bstring os_getthisprocessdir(void)
 {
     wchar_t buffer[PATH_MAX] = L"";
     bstring fullpath = bstring_open(), dir = bstring_open(),
-        result = bstring_open();
+            result = bstring_open();
     DWORD chars = 0;
-    log_win32_to(chars, GetModuleFileNameW(
-        nullptr, buffer, countof(buffer)), 0);
+    log_win32_to(chars, GetModuleFileNameW(nullptr, buffer, countof(buffer)), 0);
 
     if (chars > 0 && buffer[0])
     {
         wide_to_utf8(buffer, fullpath);
         os_get_parent(cstr(fullpath), dir);
-        log_b(os_isabspath(cstr(dir)) && os_dir_exists(cstr(dir)),
-            "%s %s", cstr(fullpath), cstr(dir));
+        log_b(os_isabspath(cstr(dir)) && os_dir_exists(cstr(dir)), "%s %s",
+            cstr(fullpath), cstr(dir));
 
         if (os_isabspath(cstr(dir)) && os_dir_exists(cstr(dir)))
         {
@@ -1258,7 +1195,7 @@ bstring os_getthisprocessdir()
     return result;
 }
 
-bstring os_get_create_appdatadir()
+bstring os_get_create_appdatadir(void)
 {
     bstring ret = bstring_open();
     wchar_t buff[PATH_MAX] = L"";
@@ -1308,8 +1245,8 @@ void os_open_dir_ui(const char *dir)
     bool exists = os_dir_exists(dir);
     sv_wstr wdir = sv_wstr_widen(dir);
     sv_wstr wcmd = sv_wstr_widen("");
-    wprintf(L"The directory is \n%s\n%s\n",
-        wcstr(wdir), exists ? L"" : L"(not found)");
+    wprintf(L"The directory is \n%s\n%s\n", wcstr(wdir),
+        exists ? L"" : L"(not found)");
 
     if (exists)
     {
@@ -1356,8 +1293,7 @@ check_result os_binarypath(const char *binname, bstring out)
 {
     sv_result currenterr = {};
     const wchar_t *path = _wgetenv(L"PATH");
-    check_b(path && path[0] != L'\0',
-        "PATH environment variable not found.");
+    check_b(path && path[0] != L'\0', "PATH environment variable not found.");
     sv_pseudosplit spl = sv_pseudosplit_open("");
     wide_to_utf8(path, spl.text);
     sv_pseudosplit_split(&spl, ';');
@@ -1371,18 +1307,17 @@ cleanup:
 bstring os_get_tmpdir(const char *subdirname)
 {
     bstring result = bstring_open();
-    wchar_t *candidates[] = { L"TMPDIR", L"TMP", L"TEMP", L"TEMPDIR" };
+    wchar_t *candidates[] = {L"TMPDIR", L"TMP", L"TEMP", L"TEMPDIR"};
     for (int i = 0; i < countof(candidates); i++)
     {
         const wchar_t *val = _wgetenv(candidates[i]);
         if (val)
         {
             wide_to_utf8(val, result);
-            log_b(os_isabspath(cstr(result)) &&
-                os_dir_exists(cstr(result)), "%s", cstr(result));
+            log_b(os_isabspath(cstr(result)) && os_dir_exists(cstr(result)),
+                "%s", cstr(result));
 
-            if (blength(result) &&
-                os_isabspath(cstr(result)) &&
+            if (blength(result) && os_isabspath(cstr(result)) &&
                 os_dir_exists(cstr(result)))
             {
                 bformata(result, "%s%s", pathsep, subdirname);
@@ -1415,16 +1350,12 @@ void createsearchspec(const sv_wstr *dir, sv_wstr *buffer)
     }
 }
 
-static check_result os_recurse_impl_dir(
-    os_recurse_params *params,
-    sv_array *w_dirs,
-    bool *retriable_err,
-    sv_wstr *currentdir,
-    sv_wstr *tmpfullpath,
-    bstring tmpfullpath_utf8)
+static check_result os_recurse_impl_dir(os_recurse_params *params,
+    sv_array *w_dirs, bool *retriable_err, sv_wstr *currentdir,
+    sv_wstr *tmpfullpath, bstring tmpfullpath_utf8)
 {
     sv_result currenterr = {};
-    WIN32_FIND_DATAW found = { 0 };
+    WIN32_FIND_DATAW found = {0};
     *retriable_err = false;
 
     bstrclear(tmpfullpath_utf8);
@@ -1470,34 +1401,23 @@ static check_result os_recurse_impl_dir(
             sv_wstr dirpath = sv_wstr_open(PATH_MAX);
             sv_wstr_append(&dirpath, wpcstr(tmpfullpath));
             sv_array_append(w_dirs, (const byte *)&dirpath, 1);
-            check(params->callback(
-                params->context,
-                tmpfullpath_utf8,
-                UINT64_MAX,
-                UINT64_MAX,
-                NULL));
+            check(params->callback(params->context, tmpfullpath_utf8, UINT64_MAX,
+                UINT64_MAX, NULL));
         }
         else if (!(found.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
         {
             /* run callback for this file */
-            uint64_t modtime = make_u64(
-                found.ftLastWriteTime.dwHighDateTime,
+            uint64_t modtime = make_u64(found.ftLastWriteTime.dwHighDateTime,
                 found.ftLastWriteTime.dwLowDateTime);
-            uint64_t filesize = make_u64(
-                found.nFileSizeHigh,
-                found.nFileSizeLow);
+            uint64_t filesize =
+                make_u64(found.nFileSizeHigh, found.nFileSizeLow);
             check(params->callback(
-                params->context,
-                tmpfullpath_utf8,
-                modtime,
-                filesize,
-                0));
+                params->context, tmpfullpath_utf8, modtime, filesize, 0));
         }
 
         SetLastError(0);
         BOOL found_next_file = FindNextFileW(h_find, &found);
-        if (!found_next_file &&
-            GetLastError() != ERROR_FILE_NOT_FOUND &&
+        if (!found_next_file && GetLastError() != ERROR_FILE_NOT_FOUND &&
             GetLastError() != ERROR_PATH_NOT_FOUND &&
             GetLastError() != ERROR_NO_MORE_FILES)
         {
@@ -1506,7 +1426,8 @@ static check_result os_recurse_impl_dir(
             *retriable_err = true;
             char buf[BUFSIZ] = "";
             os_win32err_to_buffer(GetLastError(), buf, countof(buf));
-            check_b(0, "Could not continue listing after \n%S\n"
+            check_b(0,
+                "Could not continue listing after \n%S\n"
                 "because of code %s (%lu)",
                 wpcstr(tmpfullpath), buf, GetLastError());
         }
@@ -1521,12 +1442,8 @@ cleanup:
     return currenterr;
 }
 
-check_result os_recurse_impl(
-    os_recurse_params *params,
-    int currentdepth,
-    sv_wstr *currentdir,
-    sv_wstr *tmpfullpath,
-    bstring tmpfullpath_utf8)
+check_result os_recurse_impl(os_recurse_params *params, int currentdepth,
+    sv_wstr *currentdir, sv_wstr *tmpfullpath, bstring tmpfullpath_utf8)
 {
     sv_result currenterr = {};
     sv_result attempt_dir = {};
@@ -1536,13 +1453,8 @@ check_result os_recurse_impl(
         /* list just this directory */
         bool retriable_err = false;
         sv_result_close(&attempt_dir);
-        attempt_dir = os_recurse_impl_dir(
-            params,
-            &w_dirs,
-            &retriable_err,
-            currentdir,
-            tmpfullpath,
-            tmpfullpath_utf8);
+        attempt_dir = os_recurse_impl_dir(params, &w_dirs, &retriable_err,
+            currentdir, tmpfullpath, tmpfullpath_utf8);
 
         if (!attempt_dir.code || !retriable_err)
         {
@@ -1568,8 +1480,8 @@ check_result os_recurse_impl(
         for (uint32_t i = 0; i < w_dirs.length; i++)
         {
             sv_wstr *dir = (sv_wstr *)sv_array_at(&w_dirs, i);
-            check(os_recurse_impl(params, currentdepth + 1,
-                dir, tmpfullpath, tmpfullpath_utf8));
+            check(os_recurse_impl(
+                params, currentdepth + 1, dir, tmpfullpath, tmpfullpath_utf8));
         }
     }
     else if (params->max_recursion_depth != 0)
@@ -1590,10 +1502,10 @@ check_result os_recurse(os_recurse_params *params)
     sv_wstr tmpfullpath = sv_wstr_open(PATH_MAX);
     bstring tmpfullpath_utf8 = bstring_open();
     utf8_to_wide(params->root, &currentdir);
-    check_b(os_isabspath(params->root),
-        "expected full path but got %s", params->root);
-    check(os_recurse_impl(
-        params, 0, &currentdir, &tmpfullpath, tmpfullpath_utf8));
+    check_b(os_isabspath(params->root), "expected full path but got %s",
+        params->root);
+    check(
+        os_recurse_impl(params, 0, &currentdir, &tmpfullpath, tmpfullpath_utf8));
 
 cleanup:
     sv_wstr_close(&currentdir);
@@ -1602,38 +1514,32 @@ cleanup:
     return currenterr;
 }
 
-check_result os_run_process(const char *path,
-    const char *const args[],
-    bstring output,
-    bstring useargscombined,
-    bool fastjoinargs,
-    const char *stdout_to_file,
-    os_lockedfilehandle *providestdin,
-    int *retcode)
+check_result os_run_process(const char *path, const char *const args[],
+    bstring output, bstring useargscombined, bool fastjoinargs,
+    const char *stdout_to_file, os_lockedfilehandle *providestdin, int *retcode)
 {
     sv_result currenterr = {};
     HANDLE childstd_in_rd = NULL;
     HANDLE childstd_in_wr = NULL;
     HANDLE childstd_out_rd = NULL;
     HANDLE childstd_out_wr = NULL;
-    PROCESS_INFORMATION procinfo = { 0 };
-    STARTUPINFOW startinfo = { 0 };
-    SECURITY_ATTRIBUTES sa = { 0 };
+    PROCESS_INFORMATION procinfo = {0};
+    STARTUPINFOW startinfo = {0};
+    SECURITY_ATTRIBUTES sa = {0};
     sa.nLength = sizeof(SECURITY_ATTRIBUTES);
     sa.bInheritHandle = TRUE;
     int stdout_to_disk = -1;
     DWORD last_read_result = 0;
-    check_b(os_isabspath(path),
-        "os_run_process needs full path but given %s.", path);
+    check_b(os_isabspath(path), "os_run_process needs full path but given %s.",
+        path);
     check_b(os_file_exists(path),
         "os_run_process needs existing file but given %s.", path);
-    check_b(providestdin == NULL || stdout_to_file == NULL,
-        "bad parameters.");
-    check_b(providestdin == NULL || output == NULL,
-        "bad parameters.");
+    check_b(providestdin == NULL || stdout_to_file == NULL, "bad parameters.");
+    check_b(providestdin == NULL || output == NULL, "bad parameters.");
     check_b(argvquote(path, args, useargscombined, fastjoinargs),
         "On Windows, we do not support filenames containing quotes "
-        "or ending with backslash, but got %s", cstr(useargscombined));
+        "or ending with backslash, but got %s",
+        cstr(useargscombined));
 
     /* Don't use popen() or system(). Simpler, and does work, but slower
     (opens a shell process), harder to run securely, will fail in gui
@@ -1648,67 +1554,68 @@ check_result os_run_process(const char *path,
     child that writes a lot of data to stdout before it even listens
     to stdin. The child will fill up the buffer and then hang waiting
     for someone to consume its stdout. */
-    check_win32(BOOL, CreatePipe(
-        &childstd_out_rd, &childstd_out_wr, &sa, 0),
+    check_win32(BOOL, CreatePipe(&childstd_out_rd, &childstd_out_wr, &sa, 0),
         FALSE, cstr(useargscombined));
-    check_win32(BOOL, SetHandleInformation(
-        childstd_out_rd, HANDLE_FLAG_INHERIT, 0),
+    check_win32(BOOL,
+        SetHandleInformation(childstd_out_rd, HANDLE_FLAG_INHERIT, 0), FALSE,
+        cstr(useargscombined));
+    check_win32(BOOL, CreatePipe(&childstd_in_rd, &childstd_in_wr, &sa, 0),
         FALSE, cstr(useargscombined));
-    check_win32(BOOL, CreatePipe(
-        &childstd_in_rd, &childstd_in_wr, &sa, 0),
-        FALSE, cstr(useargscombined));
-    check_win32(BOOL, SetHandleInformation(
-        childstd_in_wr, HANDLE_FLAG_INHERIT, 0),
-        FALSE, cstr(useargscombined));
+    check_win32(BOOL,
+        SetHandleInformation(childstd_in_wr, HANDLE_FLAG_INHERIT, 0), FALSE,
+        cstr(useargscombined));
 
     /* If child calls CloseHandle on stderr or stdout, use duplicatehandle. */
     sv_wstr argscombined = sv_wstr_widen(cstr(useargscombined));
     startinfo.cb = sizeof(STARTUPINFO);
     startinfo.dwFlags |= STARTF_USESTDHANDLES;
-    startinfo.hStdError = providestdin == NULL ?
-        childstd_out_wr : INVALID_HANDLE_VALUE;
-    startinfo.hStdOutput = providestdin == NULL ?
-        childstd_out_wr : INVALID_HANDLE_VALUE;
-    startinfo.hStdInput = providestdin == NULL ?
-        INVALID_HANDLE_VALUE : childstd_in_rd;
+    startinfo.hStdError =
+        providestdin == NULL ? childstd_out_wr : INVALID_HANDLE_VALUE;
+    startinfo.hStdOutput =
+        providestdin == NULL ? childstd_out_wr : INVALID_HANDLE_VALUE;
+    startinfo.hStdInput =
+        providestdin == NULL ? INVALID_HANDLE_VALUE : childstd_in_rd;
 
     if (stdout_to_file)
     {
         startinfo.hStdError = INVALID_HANDLE_VALUE;
         sv_wstr wstdout_to_file = sv_wstr_widen(stdout_to_file);
-        log_errno_to(stdout_to_disk, _wopen(
-            wcstr(wstdout_to_file),
-            O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644));
-        
+        log_errno_to(stdout_to_disk,
+            _wopen(wcstr(wstdout_to_file),
+                O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644));
+
         check_b(stdout_to_disk >= 0, "_wopen()");
         sv_wstr_close(&wstdout_to_file);
     }
 
     bstrclear(output);
-    check_win32(BOOL, CreateProcessW(NULL,
-        (wchar_t *)wcstr(argscombined), /* must be writable */
-        NULL,          /* process security attributes */
-        NULL,          /* primary thread security attributes */
-        TRUE,          /* handles are inherited */
-        0,             /* creation flags */
-        NULL,          /* use parent's environment */
-        NULL,          /* use parent's current directory */
-        &startinfo,
-        &procinfo),
+    check_win32(BOOL,
+        CreateProcessW(NULL,
+            (wchar_t *)wcstr(argscombined), /* must be writable */
+            NULL, /* process security attributes */
+            NULL, /* primary thread security attributes */
+            TRUE, /* handles are inherited */
+            0, /* creation flags */
+            NULL, /* use parent's environment */
+            NULL, /* use parent's current directory */
+            &startinfo, &procinfo),
         FALSE, cstr(useargscombined));
 
-    enum {buffersize = 4096};
+    enum
+    {
+        buffersize = 4096
+    };
     char buf[buffersize] = "";
     CloseHandleNull(&childstd_out_wr);
     CloseHandleNull(&childstd_in_rd);
     if (providestdin != NULL)
     {
-        LARGE_INTEGER location = { 0 };
-        check_b(providestdin->os_handle > 0,
-            "invalid file handle %s",
+        LARGE_INTEGER location = {0};
+        check_b(providestdin->os_handle > 0, "invalid file handle %s",
             cstr(providestdin->loggingcontext));
-        check_win32(BOOL, SetFilePointerEx(
-            providestdin->os_handle, location, NULL, FILE_BEGIN),
+        check_win32(BOOL,
+            SetFilePointerEx(
+                providestdin->os_handle, location, NULL, FILE_BEGIN),
             FALSE, cstr(providestdin->loggingcontext));
 
         while (true)
@@ -1723,8 +1630,8 @@ check_result os_run_process(const char *path,
             }
 
             DWORD dw_written = 0;
-            log_win32_to(success, WriteFile(
-                childstd_in_wr, buf, dw_read, &dw_written, NULL),
+            log_win32_to(success,
+                WriteFile(childstd_in_wr, buf, dw_read, &dw_written, NULL),
                 FALSE, cstr(providestdin->loggingcontext));
             check_b(dw_read == dw_written,
                 "%s wanted to write %d but only wrote %d",
@@ -1742,14 +1649,15 @@ check_result os_run_process(const char *path,
         {
             SetLastError(0);
             DWORD dw_read = 0;
-            BOOL ret = ReadFile(
-                childstd_out_rd, buf, countof(buf), &dw_read, NULL);
+            BOOL ret =
+                ReadFile(childstd_out_rd, buf, countof(buf), &dw_read, NULL);
             last_read_result = GetLastError();
             if (!ret || dw_read == 0)
             {
-                last_read_result = (!ret &&
-                    last_read_result != ERROR_BROKEN_PIPE) ?
-                    last_read_result : 0;
+                last_read_result =
+                    (!ret && last_read_result != ERROR_BROKEN_PIPE)
+                    ? last_read_result
+                    : 0;
 
                 break;
             }
@@ -1763,11 +1671,10 @@ check_result os_run_process(const char *path,
         {
             SetLastError(0);
             DWORD dw_read = 0;
-            BOOL ret = ReadFile(
-                childstd_out_rd, buf, countof(buf), &dw_read, NULL);
-            log_b(ret ||
-                GetLastError() == 0 ||
-                GetLastError() == ERROR_BROKEN_PIPE,
+            BOOL ret =
+                ReadFile(childstd_out_rd, buf, countof(buf), &dw_read, NULL);
+            log_b(ret || GetLastError() == 0 ||
+                    GetLastError() == ERROR_BROKEN_PIPE,
                 "lasterr=%lu", GetLastError());
 
             if (!ret || dw_read == 0)
@@ -1785,20 +1692,17 @@ check_result os_run_process(const char *path,
 
     CloseHandleNull(&childstd_in_wr);
     DWORD result = 0;
-    log_win32_to(result, WaitForSingleObject(
-        procinfo.hProcess, INFINITE),
+    log_win32_to(result, WaitForSingleObject(procinfo.hProcess, INFINITE),
         WAIT_FAILED, cstr(useargscombined));
     log_b(result == WAIT_OBJECT_0, "got wait result %lu", result);
 
     DWORD dwret = 1;
-    log_win32(BOOL, GetExitCodeProcess(
-        procinfo.hProcess, &dwret),
-        FALSE, cstr(useargscombined));
+    log_win32(BOOL, GetExitCodeProcess(procinfo.hProcess, &dwret), FALSE,
+        cstr(useargscombined));
 
     log_b(dwret == 0, "cmd=%s ret=%lu", cstr(useargscombined), dwret);
-    *retcode = (int)dwret; /* allow cast */
-    check_b(last_read_result == 0, "ReadFile() returned %lu",
-        last_read_result);
+    *retcode = (int)dwret;
+    check_b(last_read_result == 0, "ReadFile() returned %lu", last_read_result);
 
 cleanup:
     sv_wstr_close(&argscombined);
@@ -1812,8 +1716,7 @@ cleanup:
     return currenterr;
 }
 
-check_result os_set_permissions(unused_ptr(const char),
-    unused(const bstring))
+check_result os_set_permissions(unused_ptr(const char), unused(const bstring))
 {
     return OK;
 }
@@ -1821,7 +1724,7 @@ check_result os_set_permissions(unused_ptr(const char),
 bool os_try_set_readable(const char *filepath, bool setreadable)
 {
     sv_wstr wfilepath = sv_wstr_widen(filepath);
-    struct _stat64i32 st = { 0 };
+    struct _stat64i32 st = {0};
     int result = 0;
     log_errno_to(result, _wstat(wcstr(wfilepath), &st));
     if (result == 0)
@@ -1859,27 +1762,24 @@ bool os_get_short_path(const char *path, bstring shortpath)
     return blength(shortpath) > 0;
 }
 
-check_result os_run_process_as(PROCESS_INFORMATION *outinfo,
-    wchar_t *cmd,
-    const wchar_t *user,
-    const wchar_t *pass)
+check_result os_run_process_as(PROCESS_INFORMATION *outinfo, wchar_t *cmd,
+    const wchar_t *user, const wchar_t *pass)
 {
     sv_result currenterr = {};
     memset(outinfo, 0, sizeof(*outinfo));
 
     /* Use CreateProcessWithLogonW instead of LogonUser
     because it requires fewer privileges to succeed. */
-    STARTUPINFOW startinfo = { 0 };
+    STARTUPINFOW startinfo = {0};
     startinfo.cb = sizeof(STARTUPINFOW);
     SetLastError(0);
-    BOOL ret = CreateProcessWithLogonW(user, NULL /* domain */,
-        pass, 0, NULL, cmd, 0, 0, 0, &startinfo, outinfo);
+    BOOL ret = CreateProcessWithLogonW(user, NULL /* domain */, pass, 0, NULL,
+        cmd, 0, 0, 0, &startinfo, outinfo);
 
     if (!ret)
     {
-        char errorname[BUFSIZ] = { 0 };
-        os_win32err_to_buffer(
-            GetLastError(), errorname, countof(errorname));
+        char errorname[BUFSIZ] = {0};
+        os_win32err_to_buffer(GetLastError(), errorname, countof(errorname));
 
         currenterr.code = 1;
         currenterr.msg = bfromcstr(errorname);
@@ -1897,15 +1797,14 @@ check_result os_restart_as_other_user(const char *data_dir)
     sv_wstr wothername = sv_wstr_open(0);
     sv_wstr wotherpass = sv_wstr_open(0);
     sv_wstr wdata_dir = sv_wstr_widen(data_dir);
-    PROCESS_INFORMATION procinfo = { 0 };
+    PROCESS_INFORMATION procinfo = {0};
     sv_result res = {};
     wchar_t modulepath[PATH_MAX] = L"";
     check_b(os_dir_exists(data_dir), "not found %s", data_dir);
-    check_win32(DWORD, GetModuleFileNameW(
-        nullptr, modulepath, countof(modulepath)), 0,
+    check_win32(DWORD,
+        GetModuleFileNameW(nullptr, modulepath, countof(modulepath)), 0,
         "Could not get path to glacial_backup.exe");
-    check_win32(DWORD, GetFileAttributesW(
-        modulepath), INVALID_FILE_ATTRIBUTES,
+    check_win32(DWORD, GetFileAttributesW(modulepath), INVALID_FILE_ATTRIBUTES,
         "Could not get path to glacial_backup.exe");
 
     /* build arguments */
@@ -1918,15 +1817,15 @@ check_result os_restart_as_other_user(const char *data_dir)
     wchar_t *command = (wchar_t *)wcstr(cmd);
     while (true)
     {
-        ask_user_str("Please enter the username, or 'q' to cancel.",
-            true, othername);
+        ask_user_str(
+            "Please enter the username, or 'q' to cancel.", true, othername);
         if (!blength(othername))
         {
             break;
         }
 
-        ask_user_str("Please enter the password, or 'q' to cancel.",
-            true, otherpass);
+        ask_user_str(
+            "Please enter the password, or 'q' to cancel.", true, otherpass);
         if (!blength(otherpass))
         {
             break;
@@ -1957,8 +1856,7 @@ cleanup:
     CloseHandleNull(&procinfo.hProcess);
     CloseHandleNull(&procinfo.hThread);
     sv_result_close(&res);
-    memzero_s(otherpass->data,
-        cast32s32u(max(0, otherpass->slen)));
+    memzero_s(otherpass->data, cast32s32u(max(0, otherpass->slen)));
     memzero_s(wotherpass.arr.buffer,
         wotherpass.arr.elementsize * wotherpass.arr.length);
 
@@ -2003,8 +1901,8 @@ bool os_dir_exists(const char *filepath)
     return os_file_or_dir_exists(filepath, &is_file) && !is_file;
 }
 
-check_result sv_file_writefile(const char *filepath,
-    const char *contents, const char *mode)
+check_result sv_file_writefile(
+    const char *filepath, const char *contents, const char *mode)
 {
     sv_result currenterr = {};
     sv_file file = {};
@@ -2051,9 +1949,7 @@ void os_fd_close(int *fd)
 }
 
 check_result os_lockedfilehandle_tryuntil_open(os_lockedfilehandle *self,
-    const char *path,
-    bool allowread,
-    bool *filenotfound)
+    const char *path, bool allowread, bool *filenotfound)
 {
     sv_result res = {};
     for (uint32_t attempt = 0; attempt < max_tries; attempt++)
@@ -2161,12 +2057,8 @@ bool os_create_dirs(const char *s)
     return os_dir_exists(s);
 }
 
-check_result os_tryuntil_run(const char *path,
-    const char *const args[],
-    bstring output,
-    bstring useargs,
-    bool fastjoinargs,
-    int acceptretcode,
+check_result os_tryuntil_run(const char *path, const char *const args[],
+    bstring output, bstring useargs, bool fastjoinargs, int acceptretcode,
     const char *stdout_to_file)
 {
     sv_result currenterr = {};
@@ -2174,9 +2066,8 @@ check_result os_tryuntil_run(const char *path,
     for (uint32_t attempt = 0; attempt < max_tries; attempt++)
     {
         int retcode = -1;
-        sv_result result = os_run_process(
-            path, args, currentstdout, useargs, fastjoinargs,
-            stdout_to_file, NULL, &retcode);
+        sv_result result = os_run_process(path, args, currentstdout, useargs,
+            fastjoinargs, stdout_to_file, NULL, &retcode);
 
         if (result.code || (retcode && retcode != acceptretcode))
         {
@@ -2205,7 +2096,6 @@ cleanup:
     return currenterr;
 }
 
-
 bool os_recurse_is_dir(uint64_t modtime, uint64_t filesize)
 {
     return modtime == UINT64_MAX && filesize == UINT64_MAX;
@@ -2219,8 +2109,7 @@ bool os_dir_empty(const char *dir)
     int count_files = list->qty;
     sv_result result_listdirs = os_listdirs(dir, list, false);
     int count_dirs = list->qty;
-    bool ret = result_listfiles.code == 0 &&
-        result_listdirs.code == 0 &&
+    bool ret = result_listfiles.code == 0 && result_listdirs.code == 0 &&
         count_files + count_dirs == 0;
 
     sv_result_close(&result_listfiles);
@@ -2264,11 +2153,8 @@ bool os_issubdirof(const char *s1, const char *s2)
     return ret;
 }
 
-check_result os_listdirs_callback(void *context,
-    const bstring filepath,
-    uint64_t modtime,
-    uint64_t filesize,
-    unused(const bstring))
+check_result os_listdirs_callback(void *context, const bstring filepath,
+    uint64_t modtime, uint64_t filesize, unused(const bstring))
 {
     bstrlist *list = (bstrlist *)context;
     if (os_recurse_is_dir(modtime, filesize))
@@ -2279,11 +2165,8 @@ check_result os_listdirs_callback(void *context,
     return OK;
 }
 
-check_result os_listfiles_callback(void *context,
-    const bstring filepath,
-    uint64_t modtime,
-    uint64_t filesize,
-    unused(const bstring))
+check_result os_listfiles_callback(void *context, const bstring filepath,
+    uint64_t modtime, uint64_t filesize, unused(const bstring))
 {
     bstrlist *list = (bstrlist *)context;
     if (!os_recurse_is_dir(modtime, filesize))
@@ -2294,17 +2177,14 @@ check_result os_listfiles_callback(void *context,
     return OK;
 }
 
-check_result os_listfilesordirs(const char *dir,
-    bstrlist *list,
-    bool sorted,
-    bool filesordirs)
+check_result os_listfilesordirs(
+    const char *dir, bstrlist *list, bool sorted, bool filesordirs)
 {
     sv_result currenterr = {};
     bstrlist_clear(list);
-    os_recurse_params params = { list, dir,
+    os_recurse_params params = {list, dir,
         filesordirs ? &os_listfiles_callback : &os_listdirs_callback,
-        0 /* max depth */,
-        NULL };
+        0 /* max depth */, NULL};
 
     check_b(os_dir_exists(dir), "%s", dir);
     check(os_recurse(&params));
@@ -2354,11 +2234,8 @@ cleanup:
     return currenterr;
 }
 
-check_result os_tryuntil_movebypattern(const char *dir,
-    const char *pattern,
-    const char *destdir,
-    bool overwrite,
-    int *moved)
+check_result os_tryuntil_movebypattern(const char *dir, const char *pattern,
+    const char *destdir, bool overwrite, int *moved)
 {
     sv_result currenterr = {};
     bstring nameonly = bstring_open();
@@ -2402,16 +2279,17 @@ void confirm_writable(const char *s)
 {
     check_fatal(s_startwith(s, cstr(restrict_write_access)),
         "Attempted to write to non-writable path '%s'. "
-        "Please submit a bug report to the authors.", s);
+        "Please submit a bug report to the authors.",
+        s);
 
     check_fatal(!s_contains(s, pathsep ".." pathsep),
         "Attempted to write to path with relative directory "
-        "'%s'. Please submit a bug report to the authors.", s);
+        "'%s'. Please submit a bug report to the authors.",
+        s);
 }
 
-check_result os_findlastfilewithextension(const char *dir,
-    const char *extension,
-    bstring path)
+check_result os_findlastfilewithextension(
+    const char *dir, const char *extension, bstring path)
 {
     sv_result currenterr = {};
     bstrclear(path);
@@ -2431,9 +2309,8 @@ cleanup:
     return currenterr;
 }
 
-check_result os_binarypath_impl(sv_pseudosplit *spl,
-    const char *binname,
-    bstring out)
+check_result os_binarypath_impl(
+    sv_pseudosplit *spl, const char *binname, bstring out)
 {
     for (uint32_t i = 0; i < spl->splitpoints.length; i++)
     {
@@ -2455,7 +2332,7 @@ void argvquoteone(const char *arg, bstring result)
     2011/04/23/everyone-quotes-command-line-arguments-the-wrong-way/ */
     bconchar(result, '"');
     const char *argend = arg + strlen(arg);
-    for (const char *it = arg; ; it++)
+    for (const char *it = arg;; it++)
     {
         int count_backslashes = 0;
         while (it != argend && *it == L'\\')
@@ -2502,10 +2379,8 @@ void argvquoteone(const char *arg, bstring result)
     bconchar(result, '"');
 }
 
-bool argvquote(const char *path,
-    const char *const args[] /* NULL-terminated */,
-    bstring result,
-    bool fast)
+bool argvquote(const char *path, const char *const args[] /* NULL-terminated */,
+    bstring result, bool fast)
 {
     bassigncstr(result, "\"");
     bcatcstr(result, path);
@@ -2545,6 +2420,3 @@ bool argvquote(const char *path,
 
     return true;
 }
-
-
-

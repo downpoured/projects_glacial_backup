@@ -17,16 +17,15 @@ GNU General Public License for more details.
 
 #include "util_os.h"
 
-void os_init();
+void os_init(void);
 
-check_result sv_file_open(sv_file *self,
-    const char *path, const char *mode);
-check_result sv_file_writefile(const char *filepath,
-    const char *contents, const char *mode);
-check_result sv_file_readfile(const char *filepath,
-    bstring contents);
+check_result sv_file_open(sv_file *self, const char *path, const char *mode);
+check_result sv_file_writefile(
+    const char *filepath, const char *contents, const char *mode);
+check_result sv_file_readfile(const char *filepath, bstring contents);
 
-typedef struct os_lockedfilehandle {
+typedef struct os_lockedfilehandle
+{
     bstring loggingcontext;
     void *os_handle;
     int fd;
@@ -38,8 +37,8 @@ check_result os_lockedfilehandle_open(os_lockedfilehandle *self,
     const char *path, bool allowread, bool *filenotfound);
 check_result os_lockedfilehandle_tryuntil_open(os_lockedfilehandle *self,
     const char *path, bool allowread, bool *filenotfound);
-check_result os_lockedfilehandle_stat(os_lockedfilehandle *self,
-    uint64_t *size, uint64_t *modtime, bstring permissions);
+check_result os_lockedfilehandle_stat(os_lockedfilehandle *self, uint64_t *size,
+    uint64_t *modtime, bstring permissions);
 
 bool os_file_exists(const char *filepath);
 bool os_dir_exists(const char *filepath);
@@ -56,20 +55,19 @@ bool os_tryuntil_move(const char *s1, const char *s2, bool overwrite);
 bool os_setcwd(const char *s);
 bool os_isabspath(const char *s);
 bool os_issubdirof(const char *s1, const char *s2);
-bstring os_getthisprocessdir();
-bstring os_get_create_appdatadir();
+bstring os_getthisprocessdir(void);
+bstring os_get_create_appdatadir(void);
 bool os_detect_other_instances(const char *path, int *out_code);
 void os_open_dir_ui(const char *dir);
 bool os_remove(const char *s);
 bool os_tryuntil_remove(const char *s);
 
-typedef sv_result(*FnRecurseThroughFilesCallback)(void *context,
-    const bstring filepath,
-    uint64_t modtime,
-    uint64_t filesize,
+typedef sv_result (*FnRecurseThroughFilesCallback)(void *context,
+    const bstring filepath, uint64_t modtime, uint64_t filesize,
     const bstring permissions);
 
-typedef struct os_recurse_params {
+typedef struct os_recurse_params
+{
     void *context;
     const char *root;
     FnRecurseThroughFilesCallback callback;
@@ -78,20 +76,17 @@ typedef struct os_recurse_params {
 } os_recurse_params;
 
 struct stat64;
-check_result os_listfiles(const char *dir,
-    bstrlist *list, bool sorted);
-check_result os_listdirs(const char *dir,
-    bstrlist *list, bool sorted);
-check_result os_tryuntil_deletefiles(const char *dir,
-    const char *filenamepattern);
-check_result os_findlastfilewithextension(const char *dir,
-    const char *extension, bstring path);
-check_result os_tryuntil_movebypattern(const char *dir,
-    const char *pattern, const char *destdir, bool overwrite, int *moved);
-check_result os_binarypath_impl(sv_pseudosplit *spl,
-    const char *binname, bstring out);
-check_result os_set_permissions(const char *filepath,
-    const bstring permissions);
+check_result os_listfiles(const char *dir, bstrlist *list, bool sorted);
+check_result os_listdirs(const char *dir, bstrlist *list, bool sorted);
+check_result os_tryuntil_deletefiles(
+    const char *dir, const char *filenamepattern);
+check_result os_findlastfilewithextension(
+    const char *dir, const char *extension, bstring path);
+check_result os_tryuntil_movebypattern(const char *dir, const char *pattern,
+    const char *destdir, bool overwrite, int *moved);
+check_result os_binarypath_impl(
+    sv_pseudosplit *spl, const char *binname, bstring out);
+check_result os_set_permissions(const char *filepath, const bstring permissions);
 check_result os_recurse(os_recurse_params *params);
 check_result os_binarypath(const char *binname, bstring out);
 void os_get_permissions(const struct stat64 *st, bstring permissions);
@@ -103,34 +98,30 @@ bool os_is_dir_writable(const char *dir);
 bstring os_get_tmpdir(const char *subdir);
 
 check_result os_restart_as_other_user(const char *data_dir);
-check_result os_run_process(const char *path,
-    const char *const args[],
-    bstring output,
-    bstring useargscombined,
-    bool fastjoinargs,
-    const char *stdout_to_file,
-    os_lockedfilehandle *providestdin,
+check_result os_run_process(const char *path, const char *const args[],
+    bstring output, bstring useargscombined, bool fastjoinargs,
+    const char *stdout_to_file, os_lockedfilehandle *providestdin,
     int *outretcode);
-check_result os_tryuntil_run(const char *path,
-    const char *const args[],
-    bstring output,
-    bstring useargscombined,
-    bool fastjoinargs,
-    int acceptretcode,
-    const char *stdout_to_file);
-bool argvquote(const char *path,
-    const char *const args[],
-    bstring result,
-    bool fast);
+check_result os_tryuntil_run(const char *path, const char *const args[],
+    bstring output, bstring useargscombined, bool fastjoinargs,
+    int acceptretcode, const char *stdout_to_file);
+bool argvquote(
+    const char *path, const char *const args[], bstring result, bool fast);
 #define close_set_invalid(fd) \
-    do { if (fd != -1) { \
-    close(fd); } fd = -1; } while (0)
+    do                        \
+    {                         \
+        if (fd != -1)         \
+        {                     \
+            close(fd);        \
+        }                     \
+        fd = -1;              \
+    } while (0)
 #define CloseHandleNull(pptr) \
-    do { CloseHandle(*(pptr)); \
-    *(pptr)=NULL;  } while (0)
-
-
-extern const bool islinux;
+    do                        \
+    {                         \
+        CloseHandle(*(pptr)); \
+        *(pptr) = NULL;       \
+    } while (0)
 
 /* restrict write access */
 extern bstring restrict_write_access;
@@ -148,7 +139,5 @@ and get a small perf increase when referencing _wgetenv */
 bstring parse_cmd_line_args(int argc, wchar_t *argv[], bool *is_low);
 const unsigned int S_IRUSR = 0000400, S_IRGRP = 0000040;
 #endif
-
-
 
 #endif

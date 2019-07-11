@@ -56,10 +56,8 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_backup(const sv_app *app,
-    const sv_group *grp,
-    svdb_db *db,
-    void *test_context)
+check_result sv_backup(
+    const sv_app *app, const sv_group *grp, svdb_db *db, void *test_context)
 {
     sv_result currenterr = {};
     sv_backup_state op = {};
@@ -89,15 +87,16 @@ check_result sv_backup(const sv_app *app,
 
     /* 2) add files to queue */
     check(sv_backup_addtoqueue(&op));
-    check(sv_backup_fromtextfile(&op, cstr(op.app->path_app_data),
-        cstr(op.grp->grpname)));
+    check(sv_backup_fromtextfile(
+        &op, cstr(op.app->path_app_data), cstr(op.grp->grpname)));
     check(hook_call_before_process_queue(op.test_context, &op.db));
     check(sv_backup_show_user(&op, true));
 
     /* 3) process files in queue */
     check(ar_manager_begin(&op.archiver));
-    check(svdb_files_iter(&op.db, sv_makestatus(op.collectionid,
-        sv_filerowstatus_complete), &op, sv_backup_processqueue_cb));
+    check(svdb_files_iter(&op.db,
+        sv_makestatus(op.collectionid, sv_filerowstatus_complete), &op,
+        sv_backup_processqueue_cb));
     check(sv_backup_show_user(&op, false));
     check(svdb_files_delete(&op.db, &op.rows_to_delete, 0));
     check(sv_backup_recordcollectionstats(&op));
@@ -118,10 +117,8 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_restore(const sv_app *app,
-    const sv_group *grp,
-    svdb_db *db,
-    bool latestversion)
+check_result sv_restore(
+    const sv_app *app, const sv_group *grp, svdb_db *db, bool latestversion)
 {
     sv_result currenterr = {};
 
@@ -195,14 +192,11 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_backup_addtoqueue_cb(void *context,
-    const bstring path,
-    uint64_t actual_lmt,
-    uint64_t actual_size,
-    const bstring perms)
+check_result sv_backup_addtoqueue_cb(void *context, const bstring path,
+    uint64_t actual_lmt, uint64_t actual_size, const bstring perms)
 {
     sv_result currenterr = {};
-    sv_file_row row = { 0 };
+    sv_file_row row = {0};
     sv_backup_state *op = (sv_backup_state *)context;
     uint64_t size = actual_size;
     show_status_update_queue(op);
@@ -228,8 +222,8 @@ check_result sv_backup_addtoqueue_cb(void *context,
         row.most_recent_collection = op->collectionid;
         row.e_status = sv_filerowstatus_complete;
         check(svdb_filesupdate(&op->db, &row, perms));
-        check(svdb_contents_setlastreferenced(&op->db, row.contents_id,
-            op->collectionid));
+        check(svdb_contents_setlastreferenced(
+            &op->db, row.contents_id, op->collectionid));
     }
     else if (row.id != 0)
     {
@@ -261,8 +255,8 @@ check_result sv_backup_addtoqueue(sv_backup_state *op)
     if (!op->test_context && op->grp->root_directories->qty == 0)
     {
         alert("\nThere are currently no directories to "
-            "be backed up for this group. To add a directory, "
-            "go to 'Edit Group' and choose 'Add/remove directories'.");
+              "be backed up for this group. To add a directory, "
+              "go to 'Edit Group' and choose 'Add/remove directories'.");
         goto cleanup;
     }
 
@@ -275,16 +269,17 @@ check_result sv_backup_addtoqueue(sv_backup_state *op)
         {
             sv_log_writes("sv_backup_addtoqueue", dir);
             printf("Searching %s...\n", dir);
-            os_recurse_params params = { op, dir, &sv_backup_addtoqueue_cb,
-                PATH_MAX, op->messages };
+            os_recurse_params params = {
+                op, dir, &sv_backup_addtoqueue_cb, PATH_MAX, op->messages};
             check(os_recurse(&params));
         }
         else
         {
             log_b(0, "Note: starting directory \n%s\nwas not found.", dir);
             printf("\nNote: starting directory \n%s\nwas not found. You can "
-                "go to 'Edit Group', 'Add/Remove Directories' to remove this "
-                "directory from the list.\n", dir);
+                   "go to 'Edit Group', 'Add/Remove Directories' to remove this "
+                   "directory from the list.\n",
+                dir);
         }
     }
 
@@ -293,9 +288,8 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_backup_fromtextfile(sv_backup_state *op,
-    const char *appdir,
-    const char *grpname)
+check_result sv_backup_fromtextfile(
+    sv_backup_state *op, const char *appdir, const char *grpname)
 {
     sv_result currenterr = {};
     os_lockedfilehandle handle = {};
@@ -320,8 +314,8 @@ check_result sv_backup_fromtextfile(sv_backup_state *op,
     {
         if (sv_pseudosplit_viewat(&split, i)[0])
         {
-            check(os_lockedfilehandle_tryuntil_open(&handle,
-                sv_pseudosplit_viewat(&split, i), true, &filenotfound));
+            check(os_lockedfilehandle_tryuntil_open(
+                &handle, sv_pseudosplit_viewat(&split, i), true, &filenotfound));
 
             if (filenotfound)
             {
@@ -331,8 +325,8 @@ check_result sv_backup_fromtextfile(sv_backup_state *op,
             else
             {
                 uint64_t lmt_from_disk = 0, actual_size_from_disk = 0;
-                check(os_lockedfilehandle_stat(&handle,
-                    &actual_size_from_disk, &lmt_from_disk, permissions));
+                check(os_lockedfilehandle_stat(&handle, &actual_size_from_disk,
+                    &lmt_from_disk, permissions));
                 check(sv_backup_addtoqueue_cb(op, split.currentline,
                     lmt_from_disk, actual_size_from_disk, permissions));
             }
@@ -395,8 +389,9 @@ void show_status_update(sv_backup_state *op, unused_ptr(const char))
 {
     if (op->count.approx_items_in_queue != 0)
     {
-        uint64_t percentage_done = (100 * (op->count.count_moved_path +
-            op->count.count_new_path)) / op->count.approx_items_in_queue;
+        uint64_t percentage_done =
+            (100 * (op->count.count_moved_path + op->count.count_new_path)) /
+            op->count.approx_items_in_queue;
         percentage_done = MIN(percentage_done, 99);
         if (!op->test_context && percentage_done != op->prev_percent_shown)
         {
@@ -406,10 +401,8 @@ void show_status_update(sv_backup_state *op, unused_ptr(const char))
     }
 }
 
-check_result sv_backup_addfile(sv_backup_state *op,
-    os_lockedfilehandle *handle,
-    const bstring path,
-    uint64_t rowid)
+check_result sv_backup_addfile(sv_backup_state *op, os_lockedfilehandle *handle,
+    const bstring path, uint64_t rowid)
 {
     sv_result currenterr = {};
     sv_file_row newfilesrow = {};
@@ -420,39 +413,39 @@ check_result sv_backup_addfile(sv_backup_state *op,
     hash256 hash = {};
     uint32_t crc32 = 0;
     efiletype ext = get_file_extension_info(cstr(path), blength(path));
-    check(os_lockedfilehandle_stat(handle, &rawcontentslength,
-        &modtimeondisk, permissions));
+    check(os_lockedfilehandle_stat(
+        handle, &rawcontentslength, &modtimeondisk, permissions));
     check(hook_get_file_info(op->test_context, handle, &rawcontentslength,
         &modtimeondisk, permissions));
-    adjustfilesize_if_audio_file(op->grp->separate_metadata, ext,
-        rawcontentslength, &contentslength);
-    check(hash_of_file(handle, op->grp->separate_metadata,
-        ext, cstr(op->archiver.ar.audiotag_binary), &hash, &crc32));
+    adjustfilesize_if_audio_file(
+        op->grp->separate_metadata, ext, rawcontentslength, &contentslength);
+    check(hash_of_file(handle, op->grp->separate_metadata, ext,
+        cstr(op->archiver.ar.audiotag_binary), &hash, &crc32));
     newfilesrow.last_write_time = modtimeondisk;
     newfilesrow.contents_length = contentslength;
 
-    check(svdb_contentsbyhash(&op->db, &hash, newfilesrow.contents_length,
-        &contentsrow));
+    check(svdb_contentsbyhash(
+        &op->db, &hash, newfilesrow.contents_length, &contentsrow));
 
     if (contentsrow.id)
     {
         /* contents are already in an archive */
-        sv_log_fmt("addfile seen %s fid=%llx cid=%llx",
-            cstr(path), castull(rowid), castull(contentsrow.id));
-        check(svdb_contents_setlastreferenced(&op->db, contentsrow.id,
-            op->collectionid));
+        sv_log_fmt("addfile seen %s fid=%llx cid=%llx", cstr(path),
+            castull(rowid), castull(contentsrow.id));
+        check(svdb_contents_setlastreferenced(
+            &op->db, contentsrow.id, op->collectionid));
         newfilesrow.contents_id = contentsrow.id;
     }
     else
     {
         /* get the latest contentrowid */
-        sv_content_row newcontentsrow = { 0 };
+        sv_content_row newcontentsrow = {0};
         check(svdb_contentsinsert(&op->db, &newcontentsrow.id));
 
         /* add to an archive on disk */
         bool iscompressed = ext != filetype_none;
-        sv_log_fmt("addfile new %s fid=%llx cid=%llx",
-            cstr(path), castull(rowid), castull(newcontentsrow.id));
+        sv_log_fmt("addfile new %s fid=%llx cid=%llx", cstr(path),
+            castull(rowid), castull(newcontentsrow.id));
         check(ar_manager_add(&op->archiver, cstr(path), iscompressed,
             newcontentsrow.id, &newcontentsrow.archivenumber,
             &newcontentsrow.compressed_contents_length));
@@ -481,9 +474,7 @@ cleanup:
 }
 
 check_result sv_backup_processqueue_cb(void *context,
-    const sv_file_row *in_files_row,
-    const bstring path,
-    unused(const bstring))
+    const sv_file_row *in_files_row, const bstring path, unused(const bstring))
 {
     sv_result currenterr = {};
     os_lockedfilehandle handle = {};
@@ -505,18 +496,18 @@ check_result sv_backup_processqueue_cb(void *context,
     else if (result_openhandle.code)
     {
         /* case 2: can't access file, use the latest version we've stored. */
-        sv_log_fmt("queue-noaccess %s %llx", cstr(path),
-            castull(in_files_row->id));
+        sv_log_fmt(
+            "queue-noaccess %s %llx", cstr(path), castull(in_files_row->id));
         bsetfmt(op->tmp_result, "Could not access %s", cstr(path));
         bstrlist_append(op->messages, op->tmp_result);
-        check(svdb_contents_setlastreferenced(&op->db,
-            in_files_row->contents_id, op->collectionid));
+        check(svdb_contents_setlastreferenced(
+            &op->db, in_files_row->contents_id, op->collectionid));
     }
     else if (!result_openhandle.code && filenotfound)
     {
         /* case 3: can't access file because it no longer exists */
-        sv_log_fmt("queue-notfound %s %llx", cstr(path),
-            castull(in_files_row->id));
+        sv_log_fmt(
+            "queue-notfound %s %llx", cstr(path), castull(in_files_row->id));
         sv_array_add64u(&op->rows_to_delete, in_files_row->id);
         op->count.count_moved_path++;
     }
@@ -570,8 +561,8 @@ check_result sv_backup_show_results(sv_backup_state *op)
     if (!op->test_context)
     {
         printf("\n\nBackups saved successfully to\n%s\n\nYou can now copy "
-            "the contents of this directory to an external drive, or upload "
-            "to online storage.",
+               "the contents of this directory to an external drive, or upload "
+               "to online storage.",
             cstr(op->archiver.path_readytoupload));
         alert("");
     }
@@ -579,9 +570,8 @@ check_result sv_backup_show_results(sv_backup_state *op)
     return OK;
 }
 
-check_result sv_backup_makecopyofdb(sv_backup_state *op,
-    const sv_group *grp,
-    const char *appdir)
+check_result sv_backup_makecopyofdb(
+    sv_backup_state *op, const sv_group *grp, const char *appdir)
 {
     bstring src = bformat("%s%suserdata%s%s%s%s_index.db", appdir, pathsep,
         pathsep, cstr(grp->grpname), pathsep, cstr(grp->grpname));
@@ -598,9 +588,8 @@ check_result sv_backup_makecopyofdb(sv_backup_state *op,
     return OK;
 }
 
-void sv_backup_compute_preview_on_new_file(sv_backup_state *op,
-    const char *path,
-    uint64_t rawcontentslength)
+void sv_backup_compute_preview_on_new_file(
+    sv_backup_state *op, const char *path, uint64_t rawcontentslength)
 {
     const int noteworthysize = 20 * 1024 * 1024;
     os_get_parent(path, op->tmp_result);
@@ -613,7 +602,7 @@ void sv_backup_compute_preview_on_new_file(sv_backup_state *op,
         {
             printf("\n%s -- %.3fMb of new data\n",
                 cstr(op->count.summary_current_dir),
-                (double)op->count.summary_current_dir_size / (1024.0*1024.0));
+                (double)op->count.summary_current_dir_size / (1024.0 * 1024.0));
         }
 
         op->count.summary_current_dir_size = 0;
@@ -631,8 +620,8 @@ check_result sv_backup_compute_preview_cb(void *context,
     os_lockedfilehandle handle = {};
     sv_backup_state *op = (sv_backup_state *)context;
     bool filenotfound = false;
-    sv_result result_handle = os_lockedfilehandle_open(&handle, cstr(path),
-        true, &filenotfound);
+    sv_result result_handle =
+        os_lockedfilehandle_open(&handle, cstr(path), true, &filenotfound);
 
     if (!filenotfound && !result_handle.code)
     {
@@ -641,15 +630,15 @@ check_result sv_backup_compute_preview_cb(void *context,
         uint64_t contentlength = 0, rawlength = 0, modtime = 0;
         efiletype ext = get_file_extension_info(cstr(path), blength(path));
         check(os_lockedfilehandle_stat(&handle, &rawlength, &modtime, NULL));
-        adjustfilesize_if_audio_file(op->grp->separate_metadata, ext,
-            rawlength, &contentlength);
+        adjustfilesize_if_audio_file(
+            op->grp->separate_metadata, ext, rawlength, &contentlength);
 
         /* if this is the first time running backup, skip the db lookup */
         bool file_is_new = op->collectionid == 1;
         if (!file_is_new)
         {
-            check(hash_of_file(&handle, op->grp->separate_metadata,
-                ext, cstr(op->archiver.ar.audiotag_binary), &hash, &crc32));
+            check(hash_of_file(&handle, op->grp->separate_metadata, ext,
+                cstr(op->archiver.ar.audiotag_binary), &hash, &crc32));
 
             sv_content_row found = {};
             check(svdb_contentsbyhash(&op->db, &hash, contentlength, &found));
@@ -677,12 +666,14 @@ void sv_backup_compute_preview(sv_backup_state *op)
     {
         op->count.summary_current_dir = bstring_open();
         op->count.count_new_bytes = 0;
-        check_warn(svdb_files_iter(&op->db, sv_makestatus(op->collectionid,
-            sv_filerowstatus_complete), op, sv_backup_compute_preview_cb), "",
-            continue_on_err);
+        check_warn(
+            svdb_files_iter(&op->db,
+                sv_makestatus(op->collectionid, sv_filerowstatus_complete), op,
+                sv_backup_compute_preview_cb),
+            "", continue_on_err);
         sv_backup_compute_preview_on_new_file(op, "", 0);
         printf("\nNew files were seen, for a total of %.3fMb new data.\n",
-            (double)op->count.count_new_bytes / (1024.0*1024.0));
+            (double)op->count.count_new_bytes / (1024.0 * 1024.0));
         op->count.count_new_bytes = 0;
         alert("");
     }
@@ -703,8 +694,8 @@ check_result sv_backup_record_data_checksums(sv_backup_state *op)
             !s_contains(cstr(filename), " ") &&
             s_endwith(cstr(filename), ".tar"))
         {
-            check(write_archive_checksum(&op->db, blist_view(files, i),
-                0, true /* still needed */));
+            check(write_archive_checksum(
+                &op->db, blist_view(files, i), 0, true /* still needed */));
             fputs(".", stdout);
         }
     }
@@ -719,7 +710,7 @@ check_result sv_backup_recordcollectionstats(sv_backup_state *op)
 {
     sv_result currenterr = {};
     time_t timecompleted = time(NULL);
-    sv_collection_row updatedrow = { 0 };
+    sv_collection_row updatedrow = {0};
     updatedrow.id = op->collectionid;
     updatedrow.time_finished = cast64s64u(timecompleted);
     check(svdb_filescount(&op->db, &updatedrow.count_total_files));
@@ -738,10 +729,8 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_compact_getcutoff(svdb_db *db,
-    const sv_group *grp,
-    uint64_t *collectionid_to_expire,
-    time_t now)
+check_result sv_compact_getcutoff(svdb_db *db, const sv_group *grp,
+    uint64_t *collectionid_to_expire, time_t now)
 {
     /* example: the user has told us that archives expire in '30 days'.
     So look for the last collection that was made >= 30 days from now. */
@@ -761,10 +750,10 @@ check_result sv_compact_getcutoff(svdb_db *db,
         time_t seconds = grp->days_to_keep_prev_versions * 60 * 60 * 24;
         for (uint32_t i = 1; i < collectionrows.length; i++)
         {
-            sv_collection_row *row = (sv_collection_row *)sv_array_at(
-                &collectionrows, i);
-            sv_log_fmt("found collection %llu that finished at %llu",
-                row->id, row->time_finished);
+            sv_collection_row *row =
+                (sv_collection_row *)sv_array_at(&collectionrows, i);
+            sv_log_fmt("found collection %llu that finished at %llu", row->id,
+                row->time_finished);
             if (now - cast64u64s(row->time_finished) > seconds)
             {
                 sv_log_fmt("choosing collection %llu because %llu > %llu",
@@ -780,14 +769,13 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_compact_getarchivestats(void *context,
-    const sv_content_row *row)
+check_result sv_compact_getarchivestats(void *context, const sv_content_row *row)
 {
     /* loop through all content rows to see what content has expired.
     archive_stats is a map from {archiveid} to {info about the archive}. */
     sv_compact_state *op = (sv_compact_state *)context;
     check_fatal(row->original_collection < 1000 * 1000 &&
-        row->archivenumber < 1000 * 1000,
+            row->archivenumber < 1000 * 1000,
         "too large, archivenamept1=%d, archivenamept2=%d",
         row->original_collection, row->archivenumber);
 
@@ -821,10 +809,8 @@ check_result sv_compact_getarchivestats(void *context,
     return OK;
 }
 
-check_result sv_compact_see_what_to_remove_cb(void *context,
-    uint32_t x,
-    uint32_t y,
-    byte *val)
+check_result sv_compact_see_what_to_remove_cb(
+    void *context, uint32_t x, uint32_t y, byte *val)
 {
     sv_compact_state *op = (sv_compact_state *)context;
     sv_archive_stats *archive = (sv_archive_stats *)val;
@@ -845,11 +831,10 @@ check_result sv_compact_see_what_to_remove_cb(void *context,
         sv_array_append(&op->archives_to_strip, archive, 1);
         if (!op->test_context)
         {
-            printf("%05x_%05x.tar, %.3fMb of %.3fMb is no longer needed.\n",
-                x, y,
-                (double)archive->size_old / (1024.0*1024.0),
-                (double)(archive->size_old + archive->size_new)
-                / (1024.0*1024.0));
+            printf("%05x_%05x.tar, %.3fMb of %.3fMb is no longer needed.\n", x,
+                y, (double)archive->size_old / (1024.0 * 1024.0),
+                (double)(archive->size_old + archive->size_new) /
+                    (1024.0 * 1024.0));
         }
     }
     else
@@ -861,30 +846,27 @@ check_result sv_compact_see_what_to_remove_cb(void *context,
     return OK;
 }
 
-void sv_compact_see_what_to_remove(sv_compact_state *op,
-    uint64_t thresholdsizebytes)
+void sv_compact_see_what_to_remove(
+    sv_compact_state *op, uint64_t thresholdsizebytes)
 {
     sv_log_fmt("see_what_to_remove, cutoff=%llu", op->expiration_cutoff);
     op->archives_to_remove = sv_array_open(sizeof32u(sv_archive_stats), 0);
     op->archives_to_strip = sv_array_open(sizeof32u(sv_archive_stats), 0);
     op->thresholdsizebytes = thresholdsizebytes;
-    check_warn(sv_2darray_foreach(&op->archive_stats,
-        &sv_compact_see_what_to_remove_cb, op), "", continue_on_err);
+    check_warn(sv_2darray_foreach(
+                   &op->archive_stats, &sv_compact_see_what_to_remove_cb, op),
+        "", continue_on_err);
 }
 
 check_result sv_strip_archive_removing_old_files(sv_compact_state *op,
-    const sv_app *app,
-    const sv_group *grp,
-    svdb_db *db,
-    bstrlist *msgs)
+    const sv_app *app, const sv_group *grp, svdb_db *db, bstrlist *msgs)
 {
     sv_result currenterr = {};
     bstring tar = bstring_open();
     ar_util ar = ar_util_open();
     svdb_txn txn = {};
     bstring readydir = bformat("%s%suserdata%s%s%sreadytoupload",
-        cstr(app->path_app_data), pathsep, pathsep, cstr(grp->grpname),
-        pathsep);
+        cstr(app->path_app_data), pathsep, pathsep, cstr(grp->grpname), pathsep);
 
     /* delete rows from db before modifying tars, for transactional integrity.
     if exception occurs, we'll be left with unneeded data in the .tar,
@@ -893,8 +875,8 @@ check_result sv_strip_archive_removing_old_files(sv_compact_state *op,
     check(svdb_txn_open(&txn, db));
     for (uint32_t i = 0; i < op->archives_to_strip.length; i++)
     {
-        sv_archive_stats *o = (sv_archive_stats *)sv_array_at(
-            &op->archives_to_strip, i);
+        sv_archive_stats *o =
+            (sv_archive_stats *)sv_array_at(&op->archives_to_strip, i);
         bsetfmt(tar, "%s%s%05x_%05x.tar", cstr(readydir), pathsep,
             o->original_collection, o->archive_number);
         sv_log_fmt("striparchives db, cutoff=%llu, tar=%s, #rows=%d",
@@ -916,8 +898,8 @@ check_result sv_strip_archive_removing_old_files(sv_compact_state *op,
     /* strip tar archives, removing the files that have expired. */
     for (uint32_t i = 0; i < op->archives_to_strip.length; i++)
     {
-        sv_archive_stats *o = (sv_archive_stats *)sv_array_at(
-            &op->archives_to_strip, i);
+        sv_archive_stats *o =
+            (sv_archive_stats *)sv_array_at(&op->archives_to_strip, i);
         bsetfmt(tar, "%s%s%05x_%05x.tar", cstr(readydir), pathsep,
             o->original_collection, o->archive_number);
         sv_log_fmt("striparchives disk, cutoff=%llu, tar=%s, #rows=%d",
@@ -925,10 +907,9 @@ check_result sv_strip_archive_removing_old_files(sv_compact_state *op,
 
         if (os_file_exists(cstr(tar)))
         {
-            sv_result result = ar_util_delete(&ar, cstr(tar),
-                cstr(op->working_dir_archived),
-                cstr(op->working_dir_unarchived),
-                &o->old_individual_files);
+            sv_result result =
+                ar_util_delete(&ar, cstr(tar), cstr(op->working_dir_archived),
+                    cstr(op->working_dir_unarchived), &o->old_individual_files);
 
             if (result.code)
             {
@@ -956,17 +937,17 @@ check_result sv_remove_entire_archives(sv_compact_state *op, svdb_db *db,
     const char *appdatadir, const char *grpname, bstrlist *messages)
 {
     sv_result currenterr = {};
-    bstring removedir = bformat("%s%suserdata%s%s%sreadytoremove",
-        appdatadir, pathsep, pathsep, grpname, pathsep);
-    bstring readydir = bformat("%s%suserdata%s%s%sreadytoupload",
-        appdatadir, pathsep, pathsep, grpname, pathsep);
+    bstring removedir = bformat("%s%suserdata%s%s%sreadytoremove", appdatadir,
+        pathsep, pathsep, grpname, pathsep);
+    bstring readydir = bformat("%s%suserdata%s%s%sreadytoupload", appdatadir,
+        pathsep, pathsep, grpname, pathsep);
     bstring src = bstring_open();
     bstring dest = bstring_open();
     bstring textfilepath = bstring_open();
     svdb_txn txn = {};
     bool somenotmoved = false;
-    check_b(os_create_dir(cstr(removedir)),
-        "couldn't create directory. %s", cstr(removedir));
+    check_b(os_create_dir(cstr(removedir)), "couldn't create directory. %s",
+        cstr(removedir));
 
     /* delete rows from db before deleting tars, for transactional integrity.
     if exception occurs, we'll be left with unneeded data in the .tar,
@@ -974,8 +955,8 @@ check_result sv_remove_entire_archives(sv_compact_state *op, svdb_db *db,
     check(svdb_txn_open(&txn, db));
     for (uint32_t i = 0; i < op->archives_to_remove.length; i++)
     {
-        sv_archive_stats *o = (sv_archive_stats *)sv_array_at(
-            &op->archives_to_remove, i);
+        sv_archive_stats *o =
+            (sv_archive_stats *)sv_array_at(&op->archives_to_remove, i);
         bsetfmt(src, "%s%s%05x_%05x.tar", cstr(readydir), pathsep,
             o->original_collection, o->archive_number);
         sv_log_fmt("removearchives db, cutoff=%llu, tar=%s, #rows=%d",
@@ -983,8 +964,8 @@ check_result sv_remove_entire_archives(sv_compact_state *op, svdb_db *db,
         check(svdb_contents_bulk_delete(db, &o->old_individual_files, 0));
 
         /* record that we no longer need this archive */
-        check(write_archive_checksum(db, cstr(src), op->expiration_cutoff,
-            false /* still needed */));
+        check(write_archive_checksum(
+            db, cstr(src), op->expiration_cutoff, false /* still needed */));
     }
 
     check(svdb_txn_commit(&txn, db));
@@ -992,8 +973,8 @@ check_result sv_remove_entire_archives(sv_compact_state *op, svdb_db *db,
     /* next, move files on disk to a 'to-be-deleted' directory */
     for (uint32_t i = 0; i < op->archives_to_remove.length; i++)
     {
-        sv_archive_stats *o = (sv_archive_stats *)sv_array_at(
-            &op->archives_to_remove, i);
+        sv_archive_stats *o =
+            (sv_archive_stats *)sv_array_at(&op->archives_to_remove, i);
         bsetfmt(src, "%s%s%05x_%05x.tar", cstr(readydir), pathsep,
             o->original_collection, o->archive_number);
         bsetfmt(dest, "%s%s%05x_%05x.tar", cstr(removedir), pathsep,
@@ -1018,8 +999,8 @@ check_result sv_remove_entire_archives(sv_compact_state *op, svdb_db *db,
             bool moved = os_tryuntil_move(cstr(src), cstr(dest), true);
             if (!moved)
             {
-                bstring msg = bformat("Could not move %s to %s",
-                    cstr(src), cstr(dest));
+                bstring msg =
+                    bformat("Could not move %s to %s", cstr(src), cstr(dest));
                 bstrlist_append(messages, msg);
                 bdestroy(msg);
             }
@@ -1029,7 +1010,7 @@ check_result sv_remove_entire_archives(sv_compact_state *op, svdb_db *db,
     if (somenotmoved && !op->test_context)
     {
         printf("Some archives weren't found, so we created text files in %s "
-            "as a reminder of which archives can be safely deleted.\n",
+               "as a reminder of which archives can be safely deleted.\n",
             cstr(removedir));
         alert("");
     }
@@ -1056,15 +1037,15 @@ void sv_compact_state_close(sv_compact_state *self)
     {
         for (uint32_t i = 0; i < self->archives_to_strip.length; i++)
         {
-            sv_archive_stats *o = (sv_archive_stats *)sv_array_at(
-                &self->archives_to_strip, i);
+            sv_archive_stats *o =
+                (sv_archive_stats *)sv_array_at(&self->archives_to_strip, i);
             sv_array_close(&o->old_individual_files);
         }
 
         for (uint32_t i = 0; i < self->archives_to_remove.length; i++)
         {
-            sv_archive_stats *o = (sv_archive_stats *)sv_array_at(
-                &self->archives_to_remove, i);
+            sv_archive_stats *o =
+                (sv_archive_stats *)sv_array_at(&self->archives_to_remove, i);
             sv_array_close(&o->old_individual_files);
         }
 
@@ -1080,29 +1061,34 @@ void sv_compact_state_close(sv_compact_state *self)
 check_result sv_compact_ask_user(const sv_group *grp, sv_compact_state *op)
 {
     bstrlist *choices = bstrlist_open();
-    bstring msg = bfromcstr("Compact data.\n\nRunning compaction is a good "
-        "way to reduce the disk space used by GlacialBackup.\n\n");
+    bstring msg =
+        bfromcstr("Compact data.\n\nRunning compaction is a good "
+                  "way to reduce the disk space used by GlacialBackup.\n\n");
 
     if (grp->days_to_keep_prev_versions)
     {
-        bformata(msg, "Files that you've deleted %d days ago are eligible "
+        bformata(msg,
+            "Files that you've deleted %d days ago are eligible "
             "to be removed from the backup archives when compaction is run. "
             "(This number of days can be changed in 'Edit Group').",
             grp->days_to_keep_prev_versions);
     }
     else
     {
-        bstr_catstatic(msg, "Files that you've deleted are eligible to be "
+        bstr_catstatic(msg,
+            "Files that you've deleted are eligible to be "
             "removed from the backup archives when compaction is run. "
             "(A number of days to wait before removal can be enabled in "
             "'Edit Group'). ");
     }
 
     bstr_catstatic(msg, "\n\nPlease choose a level of compaction to run:");
-    bstrlist_splitcstr(choices, "Quick Compaction. Determine and show a "
+    bstrlist_splitcstr(choices,
+        "Quick Compaction. Determine and show a "
         "list of .tar archives that are no longer needed.|"
         "Thorough Compaction. Search within each .tar archive and remove "
-        "data that is no longer needed.|Back", '|');
+        "data that is no longer needed.|Back",
+        '|');
 
     int choice = menu_choose(cstr(msg), choices, NULL, NULL, NULL);
     op->is_thorough = choice == 1;
@@ -1111,10 +1097,8 @@ check_result sv_compact_ask_user(const sv_group *grp, sv_compact_state *op)
     return OK;
 }
 
-check_result sv_compact_impl(const sv_group *grp,
-    const sv_app *app,
-    svdb_db *db,
-    sv_compact_state *op)
+check_result sv_compact_impl(
+    const sv_group *grp, const sv_app *app, svdb_db *db, sv_compact_state *op)
 {
     sv_result currenterr = {};
     bstrlist *msgs = bstrlist_open();
@@ -1125,8 +1109,8 @@ check_result sv_compact_impl(const sv_group *grp,
     else
     {
         alert("As listed above, we found some data that can be compacted.");
-        check(sv_remove_entire_archives(op, db, cstr(app->path_app_data),
-            cstr(grp->grpname), msgs));
+        check(sv_remove_entire_archives(
+            op, db, cstr(app->path_app_data), cstr(grp->grpname), msgs));
         check(sv_strip_archive_removing_old_files(op, app, grp, db, msgs));
         if (msgs->qty)
         {
@@ -1145,10 +1129,8 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_choosecollection(svdb_db *db,
-    const char *readydir,
-    bstring dbfilechosen,
-    uint64_t *collectionidchosen)
+check_result sv_choosecollection(svdb_db *db, const char *readydir,
+    bstring dbfilechosen, uint64_t *collectionidchosen)
 {
     sv_result currenterr = {};
     bstrclear(dbfilechosen);
@@ -1176,8 +1158,8 @@ check_result sv_choosecollection(svdb_db *db,
         int index = menu_choose_long(choices, 10 /* show in groups of 10. */);
         if (index >= 0 && index < cast32u32s(arr.length))
         {
-            sv_collection_row *row = (sv_collection_row *)sv_array_at(
-                &arr, cast32s32u(index));
+            sv_collection_row *row =
+                (sv_collection_row *)sv_array_at(&arr, cast32s32u(index));
             bsetfmt(dbpath, "%s%s%05x_index.db", readydir, pathsep,
                 cast64u32u(row->id));
             if (os_file_exists(cstr(dbpath)))
@@ -1191,8 +1173,9 @@ check_result sv_choosecollection(svdb_db *db,
             else
             {
                 printf("The file \n%s\n was not found. Please download it "
-                    "and try again, or pick another collection to restore "
-                    "from.\n", cstr(dbpath));
+                       "and try again, or pick another collection to restore "
+                       "from.\n",
+                    cstr(dbpath));
                 alert("");
             }
         }
@@ -1211,9 +1194,7 @@ cleanup:
 }
 
 check_result sv_restore_file(sv_restore_state *op,
-    const sv_file_row *in_files_row,
-    const bstring path,
-    const bstring perms)
+    const sv_file_row *in_files_row, const bstring path, const bstring perms)
 {
     sv_result currenterr = {};
     sv_content_row contentsrow = {};
@@ -1234,33 +1215,32 @@ check_result sv_restore_file(sv_restore_state *op,
     /* get dest path */
     check_b(blength(path) >= 4, "path length is too short %s", cstr(path));
     const char *pathwithoutroot = cstr(path) + (islinux ? 1 : 3);
-    bsetfmt(op->destfullpath, "%s%s%s", cstr(op->destdir), pathsep,
-        pathwithoutroot);
+    bsetfmt(
+        op->destfullpath, "%s%s%s", cstr(op->destdir), pathsep, pathwithoutroot);
     check_b(islinux || blength(op->destfullpath) < PATH_MAX,
         "The length of the resulting path would have been too long, please "
         "choose a shorter destination directory.");
-    check(hook_call_when_restoring_file(op->test_context, cstr(path),
-        op->destfullpath));
-    check(ar_manager_restore(&op->archiver, cstr(archivepath),
-        contentsrow.id, cstr(op->working_dir_archived),
-        cstr(op->destfullpath)));
+    check(hook_call_when_restoring_file(
+        op->test_context, cstr(path), op->destfullpath));
+    check(ar_manager_restore(&op->archiver, cstr(archivepath), contentsrow.id,
+        cstr(op->working_dir_archived), cstr(op->destfullpath)));
 
     /* apply lmt */
-    log_b(os_setmodifiedtime_nearestsecond(cstr(op->destfullpath),
-        in_files_row->last_write_time), "%s %llu", cstr(op->destfullpath),
+    log_b(os_setmodifiedtime_nearestsecond(
+              cstr(op->destfullpath), in_files_row->last_write_time),
+        "%s %llu", cstr(op->destfullpath),
         castull(in_files_row->last_write_time));
 
     /* confirm filesize */
-    efiletype ext = get_file_extension_info(cstr(op->destfullpath),
-        blength(op->destfullpath));
-    bool is_separate_audio = op->separate_metadata &&
-        ext != filetype_binary &&
-        ext != filetype_none;
+    efiletype ext = get_file_extension_info(
+        cstr(op->destfullpath), blength(op->destfullpath));
+    bool is_separate_audio =
+        op->separate_metadata && ext != filetype_binary && ext != filetype_none;
 
     if (!is_separate_audio)
     {
         check_b(contentsrow.contents_length ==
-            os_getfilesize(cstr(op->destfullpath)),
+                os_getfilesize(cstr(op->destfullpath)),
             "restoring %08llx to %s expected size %llu but got %llu",
             castull(contentsrow.id), cstr(op->destfullpath),
             castull(contentsrow.contents_length),
@@ -1271,20 +1251,20 @@ check_result sv_restore_file(sv_restore_state *op,
     if (!is_separate_audio || blength(op->archiver.ar.audiotag_binary))
     {
         /* set file readable, e.g. if we're restoring from other user */
-        log_b(os_try_set_readable(cstr(op->destfullpath), true),
-            "%s", cstr(op->destfullpath));
-        check(os_lockedfilehandle_open(&handle, cstr(op->destfullpath),
-            true, NULL));
-        check(hash_of_file(&handle, cast64u32u(op->separate_metadata),
-            ext, cstr(op->archiver.ar.audiotag_binary), &hash, &crc));
+        log_b(os_try_set_readable(cstr(op->destfullpath), true), "%s",
+            cstr(op->destfullpath));
+        check(os_lockedfilehandle_open(
+            &handle, cstr(op->destfullpath), true, NULL));
+        check(hash_of_file(&handle, cast64u32u(op->separate_metadata), ext,
+            cstr(op->archiver.ar.audiotag_binary), &hash, &crc));
 
         /* compare 256bit hashes and not the crc */
         hash256tostr(&contentsrow.hash, hashexpected);
         hash256tostr(&hash, hashgot);
         check_b(s_equal(cstr(hashexpected), cstr(hashgot)),
             "restoring %08llx to %s expected hash %s but got %s",
-            castull(contentsrow.id), cstr(op->destfullpath),
-            cstr(hashexpected), cstr(hashgot));
+            castull(contentsrow.id), cstr(op->destfullpath), cstr(hashexpected),
+            cstr(hashgot));
     }
 
     /* apply posix permissions */
@@ -1306,10 +1286,8 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_restore_cb(void *context,
-    const sv_file_row *in_files_row,
-    const bstring path,
-    const bstring permissions)
+check_result sv_restore_cb(void *context, const sv_file_row *in_files_row,
+    const bstring path, const bstring permissions)
 {
     sv_restore_state *op = (sv_restore_state *)context;
     if (fnmatch_simple(cstr(op->scope), cstr(path)))
@@ -1317,10 +1295,11 @@ check_result sv_restore_cb(void *context,
         op->countfilesmatch++;
         op->countfilescomplete++;
         log_b(in_files_row->e_status == sv_filerowstatus_complete &&
-            in_files_row->most_recent_collection == op->collectionidwanted,
+                in_files_row->most_recent_collection == op->collectionidwanted,
             "%s, at the original time the backup was taken this file was "
             "not available, so we will recover a valid but previous version. "
-            "%d %llu %llu", cstr(path), in_files_row->e_status,
+            "%d %llu %llu",
+            cstr(path), in_files_row->e_status,
             castull(in_files_row->most_recent_collection),
             castull(op->collectionidwanted));
 
@@ -1337,19 +1316,19 @@ check_result sv_restore_cb(void *context,
     return OK;
 }
 
-check_result sv_restore_checkbinarypaths(const sv_app *app,
-    const sv_group *grp,
-    sv_restore_state *op)
+check_result sv_restore_checkbinarypaths(
+    const sv_app *app, const sv_group *grp, sv_restore_state *op)
 {
     sv_result currenterr = {};
     check(ar_manager_open(&op->archiver, cstr(app->path_app_data),
         cstr(grp->grpname), 0, grp->approx_archive_size_bytes));
-    sv_result result = checkbinarypaths(&op->archiver.ar,
-        grp->separate_metadata, cstr(op->archiver.path_working));
+    sv_result result = checkbinarypaths(&op->archiver.ar, grp->separate_metadata,
+        cstr(op->archiver.path_working));
     if (result.code)
     {
         if (grp->separate_metadata && s_contains(cstr(result.msg), "ffmpeg") &&
-            ask_user("We were not able to find ffmpeg. Please try to install "
+            ask_user(
+                "We were not able to find ffmpeg. Please try to install "
                 "ffmpeg first.\nShould we continue without installing ffmpeg "
                 "(files can be restored successfully, but file content "
                 "verification will be skipped)? y/n"))
@@ -1366,25 +1345,25 @@ cleanup:
     return currenterr;
 }
 
-void sv_restore_show_messages(bool latestversion,
-    const sv_group *grp,
-    sv_restore_state *op)
+void sv_restore_show_messages(
+    bool latestversion, const sv_group *grp, sv_restore_state *op)
 {
     if (op->messages->qty)
     {
         printf("Remember that if the .tar files have been have been uploaded "
-            "but are no longer present locally, the tar files must be moved "
-            "back to \n%s\n\n", cstr(op->archiver.path_readytoupload));
+               "but are no longer present locally, the tar files must be moved "
+               "back to \n%s\n\n",
+            cstr(op->archiver.path_readytoupload));
         if (!latestversion && grp->days_to_keep_prev_versions)
         {
             printf("Also, remember that when Compaction is run, some data "
-                "that is older than %d days is made unavailable.\n\n",
+                   "that is older than %d days is made unavailable.\n\n",
                 grp->days_to_keep_prev_versions);
         }
         else if (!latestversion)
         {
             printf("Also, remember that when Compaction is run, some data "
-                "from previous versions is made unavailable.\n\n");
+                   "from previous versions is made unavailable.\n\n");
         }
 
         alert("");
@@ -1396,10 +1375,8 @@ void sv_restore_show_messages(bool latestversion,
     }
 }
 
-check_result sv_restore_ask_user_options(const sv_app *app,
-    bool latestversion,
-    svdb_txn *txn,
-    sv_restore_state *op)
+check_result sv_restore_ask_user_options(
+    const sv_app *app, bool latestversion, svdb_txn *txn, sv_restore_state *op)
 {
     /* ask the user
     1) which version to restore from
@@ -1421,9 +1398,8 @@ check_result sv_restore_ask_user_options(const sv_app *app,
     }
     else
     {
-        check(sv_choosecollection(op->db,
-            cstr(op->archiver.path_readytoupload), prev_dbfile,
-            &op->collectionidwanted));
+        check(sv_choosecollection(op->db, cstr(op->archiver.path_readytoupload),
+            prev_dbfile, &op->collectionidwanted));
         if (op->collectionidwanted && blength(prev_dbfile))
         {
             check(svdb_disconnect(op->db));
@@ -1437,7 +1413,7 @@ check_result sv_restore_ask_user_options(const sv_app *app,
     }
 
     printf("Which files should we restore? Enter '*' to restore all files, "
-        "or a pattern like '*.mp3' or '%s', or 'q' to cancel.\n",
+           "or a pattern like '*.mp3' or '%s', or 'q' to cancel.\n",
         islinux ? "/directory/path/*" : "C:\\myfiles\\path\\*");
     ask_user_str("", true, op->scope);
     if (!blength(op->scope))
@@ -1449,9 +1425,11 @@ check_result sv_restore_ask_user_options(const sv_app *app,
     check_b(blength(op->tmp_result) == 0, "This is not a valid pattern. %s",
         cstr(op->tmp_result));
     os_clr_console();
-    ask_user_str("Please enter the full path to an output directory. It "
+    ask_user_str(
+        "Please enter the full path to an output directory. It "
         "should be currently empty and have enough free hard drive space. "
-        "Or enter 'q' to cancel.", true, op->destdir);
+        "Or enter 'q' to cancel.",
+        true, op->destdir);
 
     if (!blength(op->destdir) || !check_user_typed_dir(app, op->destdir))
     {
@@ -1460,7 +1438,7 @@ check_result sv_restore_ask_user_options(const sv_app *app,
     else if (!os_dir_empty(cstr(op->destdir)))
     {
         alert("This directory does not appear to be empty. Please first "
-            "ensure that the directory is empty.");
+              "ensure that the directory is empty.");
         goto cleanup;
     }
     else if (!os_is_dir_writable(cstr(op->destdir)))
@@ -1469,15 +1447,16 @@ check_result sv_restore_ask_user_options(const sv_app *app,
         goto cleanup;
     }
 
-    if (islinux && ask_user("\nRestore users, groups, and permissions "
-        "(requires root access)? y/n"))
+    if (islinux &&
+        ask_user("\nRestore users, groups, and permissions "
+                 "(requires root access)? y/n"))
     {
         op->restore_owners = true;
     }
 
     op->user_canceled = false;
-    check_b(os_create_dirs(cstr(op->working_dir_archived)),
-        "couldn't create %s", cstr(op->working_dir_archived));
+    check_b(os_create_dirs(cstr(op->working_dir_archived)), "couldn't create %s",
+        cstr(op->working_dir_archived));
     check_b(os_create_dirs(cstr(op->working_dir_unarchived)),
         "couldn't create %s", cstr(op->working_dir_unarchived));
     check(os_tryuntil_deletefiles(cstr(op->working_dir_archived), "*"));

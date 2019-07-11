@@ -26,7 +26,7 @@ void os_get_parent(const char *fullpath, bstring parent);
 void os_split_dir(const char *s, bstring parent, bstring child);
 bool os_remove_file_basic(const char *filepath);
 void os_ensure_remove_file_basic(const char *filepath);
-void os_clr_console();
+void os_clr_console(void);
 void os_clock_gettime(int64_t *seconds, int32_t *ms);
 void os_sleep(uint32_t milliseconds);
 void os_set_env(const char *key, const char *val);
@@ -41,13 +41,14 @@ typedef struct os_perftimer
     int64_t timestarted;
 } os_perftimer;
 
-os_perftimer os_perftimer_start();
+os_perftimer os_perftimer_start(void);
 double os_perftimer_read(const os_perftimer *timer);
 void os_perftimer_close(os_perftimer *timer);
 extern const bool islinux;
 
 void sv_file_close(sv_file *self);
-check_result sv_file_open_basic(sv_file *self, const char *path, const char *mode);
+check_result sv_file_open_basic(
+    sv_file *self, const char *path, const char *mode);
 
 #if __linux__
 #define memzero_s(buf, len) memset_s((buf), 0, (len))

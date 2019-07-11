@@ -39,7 +39,8 @@ void sv_array_reserve(sv_array *self, uint32_t requestedcapacity)
 
     /* double container size until large enough.*/
     requestedcapacity = nearest_power_of_two(requestedcapacity);
-    self->buffer = sv_realloc(self->buffer, requestedcapacity, self->elementsize);
+    self->buffer =
+        sv_realloc(self->buffer, requestedcapacity, self->elementsize);
     self->capacity = requestedcapacity;
 }
 
@@ -48,7 +49,8 @@ void sv_array_append(sv_array *self, const void *inbuffer, uint32_t incount)
 {
     uint32_t index = checkedmul32(self->length, self->elementsize);
     sv_array_reserve(self, checkedadd32(self->length, incount));
-    memcpy(&self->buffer[index], inbuffer, checkedmul32(self->elementsize, incount));
+    memcpy(&self->buffer[index], inbuffer,
+        checkedmul32(self->elementsize, incount));
 
     self->length += incount;
 }
@@ -91,7 +93,7 @@ byte *sv_array_at(sv_array *self, uint32_t index)
 }
 
 /* helper for making an array of uint64_t. */
-sv_array sv_array_open_u64()
+sv_array sv_array_open_u64(void)
 {
     sv_array ret = sv_array_open(sizeof32u(uint64_t), 1);
     sv_array_truncatelength(&ret, 0);
@@ -198,7 +200,8 @@ uint32_t checkedadd32(uint32_t a, uint32_t b)
 
 int32_t checkedadd32s(int32_t a, int32_t b)
 {
-    check_fatal(!(((b > 0) && (a > INT_MAX - b)) || ((b < 0) && (a < INT_MIN - b))),
+    check_fatal(
+        !(((b > 0) && (a > INT_MAX - b)) || ((b < 0) && (a < INT_MIN - b))),
         "overflow");
 
     return a + b;
@@ -339,8 +342,8 @@ void ask_user_str(const char *prompt, bool q_to_cancel, bstring out)
     limited_while_true()
     {
         char buffer[BUFSIZ] = {0};
-        if (fgets(buffer, countof(buffer) - 1, stdin) == NULL || buffer[0] == '\n' ||
-            buffer[0] == '\0')
+        if (fgets(buffer, countof(buffer) - 1, stdin) == NULL ||
+            buffer[0] == '\n' || buffer[0] == '\0')
         {
             if (allow_empty)
                 break;
@@ -358,8 +361,8 @@ void ask_user_str(const char *prompt, bool q_to_cancel, bstring out)
             /* eat extra characters */
             while (getchar() != '\n')
                 ;
-            printf(
-                "This is too long, limit of %d characters\n", countof32s(buffer) - 1);
+            printf("This is too long, limit of %d characters\n",
+                countof32s(buffer) - 1);
             continue;
         }
     }
@@ -435,7 +438,6 @@ void alert(const char *message)
     (void)getchar();
 }
 
-
 /* silence warnings (for tests) */
 void quiet_warnings(bool b)
 {
@@ -443,7 +445,7 @@ void quiet_warnings(bool b)
 }
 
 /* are we currently quieted */
-bool is_quiet()
+bool is_quiet(void)
 {
     return g_quiet_warnings;
 }
@@ -481,8 +483,8 @@ void die(void)
 }
 
 /* implement 'warn' which is sometimes recoverable */
-void check_warn_impl(
-    sv_result res, const char *msg, const char *function, erespondtoerr respondtoerr)
+void check_warn_impl(sv_result res, const char *msg, const char *function,
+    erespondtoerr respondtoerr)
 {
     if (res.code)
     {
@@ -506,20 +508,22 @@ void check_warn_impl(
 /* helper to view entry in a string list */
 const char *blist_view(const bstrlist *list, int index)
 {
-    check_fatal(list && index >= 0 && index < list->qty, "index is out-of-bounds");
+    check_fatal(
+        list && index >= 0 && index < list->qty, "index is out-of-bounds");
 
     return cstr(list->entry[index]);
 }
 
 /* log error number */
-void log_errno_impl(
-    const char *exp, int nerrno, const char *context[4], const char *fn, int lineno)
+void log_errno_impl(const char *exp, int nerrno, const char *context[4],
+    const char *fn, int lineno)
 {
     char errorname[BUFSIZ] = {0};
     os_errno_to_buffer(nerrno, errorname, countof(errorname));
-    sv_log_fmt("'%s' returned errno=%s(%d) in %s line %d %s %s %s %s", exp, errorname,
-        nerrno, fn, lineno, context[0] ? context[0] : "", context[1] ? context[1] : "",
-        context[2] ? context[2] : "", context[3] ? context[3] : "");
+    sv_log_fmt("'%s' returned errno=%s(%d) in %s line %d %s %s %s %s", exp,
+        errorname, nerrno, fn, lineno, context[0] ? context[0] : "",
+        context[1] ? context[1] : "", context[2] ? context[2] : "",
+        context[3] ? context[3] : "");
 }
 
 /* create a nice error-message if errno indicates error */
@@ -529,33 +533,33 @@ void check_errno_impl(sv_result *currenterr, const char *exp, int nerrno,
     char errorname[BUFSIZ] = {0};
     os_errno_to_buffer(nerrno, errorname, countof(errorname));
     currenterr->code = 1;
-    currenterr->msg = bformat("Got %s(%d) in %s %s %s %s %s (%s)", errorname, nerrno,
-        fn, context[0] ? context[0] : "", context[1] ? context[1] : "",
+    currenterr->msg = bformat("Got %s(%d) in %s %s %s %s %s (%s)", errorname,
+        nerrno, fn, context[0] ? context[0] : "", context[1] ? context[1] : "",
         context[2] ? context[2] : "", context[3] ? context[3] : "", exp);
     check_b_hit();
 }
 
 /* log a win32 error */
-void log_errwin32_impl(const char *exp, unsigned long nerrno, const char *context[4],
-    const char *fn, int lineno)
+void log_errwin32_impl(const char *exp, unsigned long nerrno,
+    const char *context[4], const char *fn, int lineno)
 {
     char errorname[BUFSIZ] = {0};
     os_win32err_to_buffer(nerrno, errorname, countof(errorname));
-    sv_log_fmt("'%s' returned errno=%s(%d) in %s line %d, %s %s %s %s", exp, errorname,
-        nerrno, fn, lineno, context[0] ? context[0] : "", context[1] ? context[1] : "",
-        context[2] ? context[2] : "", context[3] ? context[3] : "");
+    sv_log_fmt("'%s' returned errno=%s(%d) in %s line %d, %s %s %s %s", exp,
+        errorname, nerrno, fn, lineno, context[0] ? context[0] : "",
+        context[1] ? context[1] : "", context[2] ? context[2] : "",
+        context[3] ? context[3] : "");
 }
 
 /* create a nice error-message if win32 indicates error */
-void check_errwin32_impl(sv_result *currenterr, const char *exp, unsigned long nerrno,
-    const char *context[4], const char *fn)
+void check_errwin32_impl(sv_result *currenterr, const char *exp,
+    unsigned long nerrno, const char *context[4], const char *fn)
 {
     char errorname[BUFSIZ] = {0};
     os_win32err_to_buffer(nerrno, errorname, countof(errorname));
     currenterr->code = 1;
-    currenterr->msg = bformat("Got %s(%d) in %s, %s %s %s %s (%s)", errorname, nerrno,
-        fn, context[0] ? context[0] : "", context[1] ? context[1] : "",
+    currenterr->msg = bformat("Got %s(%d) in %s, %s %s %s %s (%s)", errorname,
+        nerrno, fn, context[0] ? context[0] : "", context[1] ? context[1] : "",
         context[2] ? context[2] : "", context[3] ? context[3] : "", exp);
     check_b_hit();
 }
-

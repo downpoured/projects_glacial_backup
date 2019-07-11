@@ -19,46 +19,48 @@ check_result svdb_connection_openhandle(svdb_db *self);
 
 SV_BEGIN_TEST_SUITE(tests_open_db_connection)
 {
-    SV_TEST("schema version should be set to 1") {
+    SV_TEST("schema version should be set to 1")
+    {
         uint32_t version = 0;
         TEST_OPEN_EX(svdb_db, db, {});
-        TEST_OPEN_EX(bstring, path, bformat("%s%s\xED\x95\x9C.db",
-            tempdir, pathsep));
+        TEST_OPEN_EX(
+            bstring, path, bformat("%s%s\xED\x95\x9C.db", tempdir, pathsep));
         check(svdb_connect(&db, cstr(path)));
         check(svdb_getint(&db, s_and_len("SchemaVersion"), &version));
         check(svdb_disconnect(&db));
         TestEqn(1, version);
     }
 
-    SV_TEST("reject an unsupported schema version") {
+    SV_TEST("reject an unsupported schema version")
+    {
         TEST_OPEN_EX(svdb_db, db, {});
-        TEST_OPEN_EX(bstring, path, bformat("%s%s\xED\x95\x9C.db",
-            tempdir, pathsep));
+        TEST_OPEN_EX(
+            bstring, path, bformat("%s%s\xED\x95\x9C.db", tempdir, pathsep));
         check(svdb_connect(&db, cstr(path)));
         check(svdb_setint(&db, s_and_len("SchemaVersion"), 2));
         check(svdb_disconnect(&db));
-        expect_err_with_message(svdb_connect(
-            &db, cstr(path)), "future version");
+        expect_err_with_message(svdb_connect(&db, cstr(path)), "future version");
         check(svdb_disconnect(&db));
     }
 
-    SV_TEST("reject missing schema version") {
+    SV_TEST("reject missing schema version")
+    {
         TEST_OPEN_EX(svdb_db, db, {});
-        TEST_OPEN_EX(bstring, path, bformat("%s%s%s.db", tempdir, pathsep,
-            currentcontext));
+        TEST_OPEN_EX(bstring, path,
+            bformat("%s%s%s.db", tempdir, pathsep, currentcontext));
         check(svdb_connect(&db, cstr(path)));
         check(svdb_runsql(&db, s_and_len("DELETE FROM TblProperties")));
         check(svdb_disconnect(&db));
-        expect_err_with_message(svdb_connect(
-            &db, cstr(path)), "future version");
+        expect_err_with_message(svdb_connect(&db, cstr(path)), "future version");
         check(svdb_disconnect(&db));
     }
 
-    SV_TEST("recover from 0 byte db") {
+    SV_TEST("recover from 0 byte db")
+    {
         uint32_t version = 0;
         TEST_OPEN_EX(svdb_db, db, {});
-        TEST_OPEN_EX(bstring, path, bformat("%s%s%s.db", tempdir, pathsep,
-            currentcontext));
+        TEST_OPEN_EX(bstring, path,
+            bformat("%s%s%s.db", tempdir, pathsep, currentcontext));
         check(sv_file_writefile(cstr(path), "", "wb"));
         quiet_warnings(true);
         check(svdb_connect(&db, cstr(path)));
@@ -68,11 +70,12 @@ SV_BEGIN_TEST_SUITE(tests_open_db_connection)
         TestEqn(1, version);
     }
 
-    SV_TEST("recover from valid db with no schema") {
+    SV_TEST("recover from valid db with no schema")
+    {
         uint32_t version = 0;
         TEST_OPEN_EX(svdb_db, db, {});
-        TEST_OPEN_EX(bstring, path, bformat("%s%s%s.db", tempdir, pathsep,
-            currentcontext));
+        TEST_OPEN_EX(bstring, path,
+            bformat("%s%s%s.db", tempdir, pathsep, currentcontext));
         db.path = bstrcpy(path);
         check(svdb_connection_openhandle(&db));
         check(svdb_disconnect(&db));
@@ -84,12 +87,13 @@ SV_BEGIN_TEST_SUITE(tests_open_db_connection)
         TestEqn(1, version);
     }
 
-    SV_TEST("add rows, read from rows") {
+    SV_TEST("add rows, read from rows")
+    {
         uint32_t int_got = 99, int_notset = 99;
         TEST_OPEN_EX(svdb_db, db, {});
         TEST_OPEN(bstring, s_got);
-        TEST_OPEN_EX(bstring, path, bformat("%s%s%s.db", tempdir, pathsep,
-            currentcontext));
+        TEST_OPEN_EX(bstring, path,
+            bformat("%s%s%s.db", tempdir, pathsep, currentcontext));
         check(svdb_connect(&db, cstr(path)));
         check(svdb_setstr(&db, s_and_len("SetStr"), "abcde"));
         check(svdb_setint(&db, s_and_len("SetInt"), 123));
@@ -102,12 +106,13 @@ SV_BEGIN_TEST_SUITE(tests_open_db_connection)
         TestEqn(0, int_notset);
     }
 
-    SV_TEST("add rows, disconnect, reconnect, read from rows") {
+    SV_TEST("add rows, disconnect, reconnect, read from rows")
+    {
         uint32_t int_got = 99, int_notset = 99;
         TEST_OPEN_EX(svdb_db, db, {});
         TEST_OPEN(bstring, s_got);
-        TEST_OPEN_EX(bstring, path, bformat("%s%s%s.db", tempdir, pathsep,
-            currentcontext));
+        TEST_OPEN_EX(bstring, path,
+            bformat("%s%s%s.db", tempdir, pathsep, currentcontext));
         check(svdb_connect(&db, cstr(path)));
         check(svdb_setstr(&db, s_and_len("SetStr"), "abcde"));
         check(svdb_setint(&db, s_and_len("SetInt"), 123));
@@ -122,12 +127,13 @@ SV_BEGIN_TEST_SUITE(tests_open_db_connection)
         TestEqn(0, int_notset);
     }
 
-    SV_TEST("inserted data not kept if transaction is rolled back") {
+    SV_TEST("inserted data not kept if transaction is rolled back")
+    {
         TEST_OPEN_EX(svdb_db, db, {});
         TEST_OPEN_EX(svdb_txn, txn, {});
         uint32_t int_got_1 = 99, int_got_2 = 99, int_got_3 = 99;
-        TEST_OPEN_EX(bstring, path, bformat("%s%s%s.db", tempdir, pathsep,
-            currentcontext));
+        TEST_OPEN_EX(bstring, path,
+            bformat("%s%s%s.db", tempdir, pathsep, currentcontext));
         check(svdb_connect(&db, cstr(path)));
         check(svdb_setint(&db, s_and_len("Int1"), 123));
         check(svdb_txn_open(&txn, &db));
@@ -145,12 +151,13 @@ SV_BEGIN_TEST_SUITE(tests_open_db_connection)
         TestEqn(789, int_got_3);
     }
 
-    SV_TEST("updated data not kept if transaction is rolled back") {
+    SV_TEST("updated data not kept if transaction is rolled back")
+    {
         TEST_OPEN_EX(svdb_db, db, {});
         TEST_OPEN_EX(svdb_txn, txn, {});
         uint32_t int_got = 99;
-        TEST_OPEN_EX(bstring, path, bformat("%s%s%s.db", tempdir, pathsep,
-            currentcontext));
+        TEST_OPEN_EX(bstring, path,
+            bformat("%s%s%s.db", tempdir, pathsep, currentcontext));
         check(svdb_connect(&db, cstr(path)));
         check(svdb_setint(&db, s_and_len("SetInt"), 123));
         check(svdb_txn_open(&txn, &db));
@@ -165,4 +172,3 @@ SV_BEGIN_TEST_SUITE(tests_open_db_connection)
     }
 }
 SV_END_TEST_SUITE()
-

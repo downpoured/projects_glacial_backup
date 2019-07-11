@@ -22,90 +22,104 @@ bool teststrimpl(int lineno, const char *s1, const char *s2);
 bool testlistimpl(int lineno, const char *expected, const bstrlist *list);
 bool testpslistimpl(int lineno, const char *expected, sv_pseudosplit *list);
 void expect_err_with_message_impl(sv_result res, const char *msgcontains);
-check_result tmpwritetextfile(const char *dir, const char *leaf,
-    bstring fullpath, const char *contents);
-void run_all_tests();
+check_result tmpwritetextfile(
+    const char *dir, const char *leaf, bstring fullpath, const char *contents);
+void run_all_tests(void);
 
-#define TestEqs(s1, s2) do { \
-    if (!teststrimpl(__LINE__, (s1), (s2))) { \
-        DEBUGBREAK(); \
-        exit(1); \
-    } } while(0)
+#define TestEqs(s1, s2)                         \
+    do                                          \
+    {                                           \
+        if (!teststrimpl(__LINE__, (s1), (s2))) \
+        {                                       \
+            DEBUGBREAK();                       \
+            exit(1);                            \
+        }                                       \
+    } while (0)
 
-#define TestEqn(n1, n2) do { \
-    if (!testintimpl(__LINE__, (unsigned long long)(n1), \
-        (unsigned long long)(n2))) { \
-        DEBUGBREAK(); \
-        exit(1); \
-    } } while(0)
+#define TestEqn(n1, n2)                                                        \
+    do                                                                         \
+    {                                                                          \
+        if (!testintimpl(                                                      \
+                __LINE__, (unsigned long long)(n1), (unsigned long long)(n2))) \
+        {                                                                      \
+            DEBUGBREAK();                                                      \
+            exit(1);                                                           \
+        }                                                                      \
+    } while (0)
 
-#define TestEqList(s1, list) do { \
-    if (!testlistimpl(__LINE__, (s1), (list))) { \
-        DEBUGBREAK(); \
-        exit(1); \
-    } } while(0)
+#define TestEqList(s1, list)                       \
+    do                                             \
+    {                                              \
+        if (!testlistimpl(__LINE__, (s1), (list))) \
+        {                                          \
+            DEBUGBREAK();                          \
+            exit(1);                               \
+        }                                          \
+    } while (0)
 
-#define TestEqPsList(s1, list) do { \
-    if (!testpslistimpl(__LINE__, (s1), (list))) { \
-        DEBUGBREAK(); \
-        exit(1); \
-    } } while(0)
+#define TestEqPsList(s1, list)                       \
+    do                                               \
+    {                                                \
+        if (!testpslistimpl(__LINE__, (s1), (list))) \
+        {                                            \
+            DEBUGBREAK();                            \
+            exit(1);                                 \
+        }                                            \
+    } while (0)
 
-#define TestEqFloat(expected, got) \
-    TestTrue(fabs((expected) - (got)) < 1e-6)
+#define TestEqFloat(expected, got) TestTrue(fabs((expected) - (got)) < 1e-6)
 
-#define TestTrue(cond) \
-    TestEqn(1, (cond)!=0)
+#define TestTrue(cond) TestEqn(1, (cond) != 0)
 
-#define expect_err_with_message(expr, msgcontains) do { \
-    quiet_warnings(true); \
-    sv_result r = (expr); \
-    quiet_warnings(false); \
-    expect_err_with_message_impl(r, (msgcontains)); \
+#define expect_err_with_message(expr, msgcontains)      \
+    do                                                  \
+    {                                                   \
+        quiet_warnings(true);                           \
+        sv_result r = (expr);                           \
+        quiet_warnings(false);                          \
+        expect_err_with_message_impl(r, (msgcontains)); \
     } while (0)
 
 #ifdef _MSC_VER
 #define UNREFERENCED_LABEL_OK_BEGIN() \
-    __pragma(warning(push)) \
-    __pragma(warning(disable: 4102))
+    __pragma(warning(push)) __pragma(warning(disable : 4102))
 
-#define UNREFERENCED_LABEL_OK_END() \
-    __pragma(warning(pop))
+#define UNREFERENCED_LABEL_OK_END() __pragma(warning(pop))
 #else
 #define UNREFERENCED_LABEL_OK_BEGIN()
 #define UNREFERENCED_LABEL_OK_END()
 #endif
 
-#define SV_BEGIN_TEST_SUITE(suitename) \
-    UNREFERENCED_LABEL_OK_BEGIN() \
-    void suitename(const char *tempdir) { \
-    const char *currentfailmsg = "unit test failed in suite " #suitename; \
-    const char *currentpassmsg = "%d passed in " #suitename "\n"; \
-    const char *currentcontext = ""; \
-    extern uint32_t sleep_between_tries; \
-    uint32_t countrun = 0; \
-    sleep_between_tries = 1; \
-    sv_result currenterr = {}; \
-    check(tests_cleardir(tempdir));
+#define SV_BEGIN_TEST_SUITE(suitename)                                        \
+    UNREFERENCED_LABEL_OK_BEGIN()                                             \
+    void suitename(const char *tempdir)                                       \
+    {                                                                         \
+        const char *currentfailmsg = "unit test failed in suite " #suitename; \
+        const char *currentpassmsg = "%d passed in " #suitename "\n";         \
+        const char *currentcontext = "";                                      \
+        extern uint32_t sleep_between_tries;                                  \
+        uint32_t countrun = 0;                                                \
+        sleep_between_tries = 1;                                              \
+        sv_result currenterr = {};                                            \
+        check(tests_cleardir(tempdir));
 
-#define SV_END_TEST_SUITE() \
-    currentcontext = ""; \
-    cleanup: \
-    if (currentcontext && currentcontext[0]) \
-    { \
-        printf("context: %s\n", currentcontext); \
-    } \
+#define SV_END_TEST_SUITE()                              \
+    currentcontext = "";                                 \
+    cleanup:                                             \
+    if (currentcontext && currentcontext[0])             \
+    {                                                    \
+        printf("context: %s\n", currentcontext);         \
+    }                                                    \
     check_warn(currenterr, currentfailmsg, exit_on_err); \
-    printf(currentpassmsg, countrun); \
-    UNREFERENCED_LABEL_OK_END() \
+    printf(currentpassmsg, countrun);                    \
+    UNREFERENCED_LABEL_OK_END()                          \
     }
 
-#define SV_TEST(tname) \
+#define SV_TEST(tname)      \
     currentcontext = tname; \
     countrun++;
 
-#define SV_TEST_() \
-    SV_TEST("")
+#define SV_TEST_() SV_TEST("")
 
 #if __linux__
 #define SV_TEST_WIN(s) if (0)
@@ -121,35 +135,39 @@ void run_all_tests();
 #error platform not yet supported
 #endif
 
-/* because this is test-only code, ok to leak small values  */
-#define SV_TEST_STR(v) \
-    bstring v = bstring_open()
+/* because this is test-only code, ok to leak small values */
+#define SV_TEST_STR(v) bstring v = bstring_open()
 
-#define TEST_OPEN_EX(type, varname, opener) \
-    type varname = opener
+/* because this is test-only code, ok to leak small values */
+#define TEST_OPEN_EX(type, varname, opener) type varname = opener
 
-#define TEST_OPEN(type, varname) \
-    type varname = CONCAT(type, _open)()
+/* because this is test-only code, ok to leak small values */
+#define TEST_OPEN(type, varname) type varname = CONCAT(type, _open)()
 
+/* because this is test-only code, ok to leak small values */
 #define TEST_OPENA(type, varname, ...) \
     type varname = CONCAT(type, _open)(__VA_ARGS__)
 
+/* because this is test-only code, ok to leak small values */
 #define TEST_OPEN2(type, varname1, varname2) \
-    type varname1 = CONCAT(type, _open)(); \
+    type varname1 = CONCAT(type, _open)();   \
     type varname2 = CONCAT(type, _open)()
 
+/* because this is test-only code, ok to leak small values */
 #define TEST_OPEN3(type, varname1, varname2, varname3) \
-    type varname1 = CONCAT(type, _open)(); \
-    type varname2 = CONCAT(type, _open)(); \
+    type varname1 = CONCAT(type, _open)();             \
+    type varname2 = CONCAT(type, _open)();             \
     type varname3 = CONCAT(type, _open)()
 
+/* because this is test-only code, ok to leak small values */
 #define TEST_OPEN4(type, varname1, varname2, varname3, varname4) \
-    type varname1 = CONCAT(type, _open)(); \
-    type varname2 = CONCAT(type, _open)(); \
-    type varname3 = CONCAT(type, _open)(); \
+    type varname1 = CONCAT(type, _open)();                       \
+    type varname2 = CONCAT(type, _open)();                       \
+    type varname3 = CONCAT(type, _open)();                       \
     type varname4 = CONCAT(type, _open)()
 
-typedef struct sv_test_hook {
+typedef struct sv_test_hook
+{
     os_lockedfilehandle filelocks[10];
     uint64_t setlastmodtimes[10];
     bstring filenames[10];
@@ -172,13 +190,13 @@ typedef struct sv_test_hook {
 sv_test_hook sv_test_hook_open(const char *dir);
 void sv_test_hook_close(sv_test_hook *self);
 bstring tests_make_subdir(const char *parent, const char *leaf);
-check_result tests_tar_list(ar_util *self, const char *tarpath,
-    bstrlist *results);
-check_result tests_check_tar_contents(ar_util *ar, const char *archive,
-    const char *expected, bool check_order);
+check_result tests_tar_list(
+    ar_util *self, const char *tarpath, bstrlist *results);
+check_result tests_check_tar_contents(
+    ar_util *ar, const char *archive, const char *expected, bool check_order);
 sv_result tests_cleardir(const char *tempdir);
-sv_result tests_lockfile(bool lock, const char *path,
-    os_lockedfilehandle *handle);
+sv_result tests_lockfile(
+    bool lock, const char *path, os_lockedfilehandle *handle);
 
 /*
 [^:]+:[^:]+:SV_BEGIN_TEST_SUITE\(([^)]+)\)

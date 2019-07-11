@@ -16,162 +16,183 @@ GNU General Public License for more details.
 
 SV_BEGIN_TEST_SUITE(tests_get_file_extension_category)
 {
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_none == get_file_extension_info(s_and_len("")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len(".")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_none == get_file_extension_info(s_and_len(".")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("..")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_none == get_file_extension_info(s_and_len("..")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("...")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_none == get_file_extension_info(s_and_len("...")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len(".mp3")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_none == get_file_extension_info(s_and_len(".mp3")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len(".xz")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_none == get_file_extension_info(s_and_len(".xz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("a.xz")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_none == get_file_extension_info(s_and_len("a.xz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_binary ==
-            get_file_extension_info(s_and_len("aa.xz")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_binary == get_file_extension_info(s_and_len("aa.xz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_mp3 ==
-            get_file_extension_info(s_and_len("a.mp3")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_mp3 == get_file_extension_info(s_and_len("a.mp3")));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestTrue(filetype_none ==
             get_file_extension_info(s_and_len("wrong case.Mp3")));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestTrue(filetype_none ==
             get_file_extension_info(s_and_len("wrong case.MP3")));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestTrue(filetype_none ==
             get_file_extension_info(s_and_len("wrong case.jpG")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("test.xzz")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_none == get_file_extension_info(s_and_len("test.xzz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("test.xz.doc")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_none == get_file_extension_info(s_and_len("test.xz.doc")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("test.xz.")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_none == get_file_extension_info(s_and_len("test.xz.")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("test.m4a.")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_none == get_file_extension_info(s_and_len("test.m4a.")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_none ==
-            get_file_extension_info(s_and_len("test.")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_none == get_file_extension_info(s_and_len("test.")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_binary ==
-            get_file_extension_info(s_and_len("test.xz")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_binary == get_file_extension_info(s_and_len("test.xz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_binary ==
-            get_file_extension_info(s_and_len("test..xz")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_binary == get_file_extension_info(s_and_len("test..xz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_binary ==
-            get_file_extension_info(s_and_len("test...xz")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_binary == get_file_extension_info(s_and_len("test...xz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_binary ==
-            get_file_extension_info(s_and_len("test....xz")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_binary == get_file_extension_info(s_and_len("test....xz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_ogg ==
-            get_file_extension_info(s_and_len("test.ogg")));
+    SV_TEST_()
+    {
+        TestTrue(filetype_ogg == get_file_extension_info(s_and_len("test.ogg")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_ogg ==
-            get_file_extension_info(s_and_len("test..ogg")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_ogg == get_file_extension_info(s_and_len("test..ogg")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_ogg ==
-            get_file_extension_info(s_and_len("test...ogg")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_ogg == get_file_extension_info(s_and_len("test...ogg")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_ogg ==
-            get_file_extension_info(s_and_len("test....ogg")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_ogg == get_file_extension_info(s_and_len("test....ogg")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_flac ==
-            get_file_extension_info(s_and_len("test.flac")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_flac == get_file_extension_info(s_and_len("test.flac")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_flac ==
-            get_file_extension_info(s_and_len("test..flac")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_flac == get_file_extension_info(s_and_len("test..flac")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_flac ==
-            get_file_extension_info(s_and_len("test...flac")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_flac == get_file_extension_info(s_and_len("test...flac")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_flac ==
-            get_file_extension_info(s_and_len("test....flac")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_flac == get_file_extension_info(s_and_len("test....flac")));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestTrue(filetype_binary ==
             get_file_extension_info(s_and_len("test.doc.xz")));
     }
 
-    SV_TEST_() {
-        TestTrue(filetype_m4a ==
-            get_file_extension_info(s_and_len("test.doc.m4a")));
+    SV_TEST_()
+    {
+        TestTrue(
+            filetype_m4a == get_file_extension_info(s_and_len("test.doc.m4a")));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestTrue(filetype_binary ==
             get_file_extension_info(s_and_len("test.doc.webm")));
     }
@@ -180,7 +201,8 @@ SV_END_TEST_SUITE()
 
 SV_BEGIN_TEST_SUITE(tests_persist_user_configs)
 {
-    SV_TEST("persist and read") {
+    SV_TEST("persist and read")
+    {
         svdb_db db = {};
         sv_group grp = {};
         TEST_OPEN_EX(sv_group, groupgot, {});
@@ -215,15 +237,16 @@ SV_END_TEST_SUITE()
 
 SV_BEGIN_TEST_SUITE(tests_find_groups)
 {
-    SV_TEST("do recognize group with expected .db file location") {
+    SV_TEST("do recognize group with expected .db file location")
+    {
         TEST_OPEN_EX(bstring, userdata, tests_make_subdir(tempdir, "userdata"));
         TEST_OPEN_EX(sv_app, test_app, {});
         TEST_OPEN(bstring, path);
-        bsetfmt(path, "%s%sexpected%sreadytoupload",
-            cstr(userdata), pathsep, pathsep);
+        bsetfmt(path, "%s%sexpected%sreadytoupload", cstr(userdata), pathsep,
+            pathsep);
         TestTrue(os_create_dirs(cstr(path)));
-        bsetfmt(path, "%s%sexpected%sexpected_index.db",
-            cstr(userdata), pathsep, pathsep);
+        bsetfmt(path, "%s%sexpected%sexpected_index.db", cstr(userdata), pathsep,
+            pathsep);
         check(sv_file_writefile(cstr(path), "", "wb"));
         bsetfmt(path, "%s%sexpected%sreadytoupload%s00001_00001.tar",
             cstr(userdata), pathsep, pathsep, pathsep);
@@ -237,12 +260,13 @@ SV_BEGIN_TEST_SUITE(tests_find_groups)
         TestEqList("expected", test_app.grp_names);
     }
 
-    SV_TEST("do not recognize group with no .db file") {
+    SV_TEST("do not recognize group with no .db file")
+    {
         TEST_OPEN_EX(bstring, userdata, tests_make_subdir(tempdir, "userdata"));
         TEST_OPEN_EX(sv_app, test_app, {});
         TEST_OPEN(bstring, path);
-        bsetfmt(path, "%s%sno_db_files%sreadytoupload",
-            cstr(userdata), pathsep, pathsep);
+        bsetfmt(path, "%s%sno_db_files%sreadytoupload", cstr(userdata), pathsep,
+            pathsep);
         TestTrue(os_create_dirs(cstr(path)));
         bsetfmt(path, "%s%sno_db_files%sreadytoupload%s00001_00001.tar",
             cstr(userdata), pathsep, pathsep, pathsep);
@@ -256,12 +280,13 @@ SV_BEGIN_TEST_SUITE(tests_find_groups)
         TestEqList("expected", test_app.grp_names);
     }
 
-    SV_TEST("incomplete group with .db files, get the latest") {
+    SV_TEST("incomplete group with .db files, get the latest")
+    {
         TEST_OPEN_EX(bstring, userdata, tests_make_subdir(tempdir, "userdata"));
         TEST_OPEN_EX(sv_app, test_app, {});
         TEST_OPEN2(bstring, path, contents);
-        bsetfmt(path, "%s%sno_main_db%sreadytoupload",
-            cstr(userdata), pathsep, pathsep);
+        bsetfmt(path, "%s%sno_main_db%sreadytoupload", cstr(userdata), pathsep,
+            pathsep);
         TestTrue(os_create_dirs(cstr(path)));
         bsetfmt(path, "%s%sno_main_db%sreadytoupload%s00001_00001.tar",
             cstr(userdata), pathsep, pathsep, pathsep);
@@ -280,26 +305,27 @@ SV_BEGIN_TEST_SUITE(tests_find_groups)
         check(sv_file_writefile(cstr(path), "i3", "wb"));
         bsetfmt(path, "%s%sno_main_db", cstr(userdata), pathsep);
         check(os_tryuntil_deletefiles(cstr(path), "*"));
-        bsetfmt(path, "%s%sno_main_db%sno_main_db_index.db",
-            cstr(userdata), pathsep, pathsep);
+        bsetfmt(path, "%s%sno_main_db%sno_main_db_index.db", cstr(userdata),
+            pathsep, pathsep);
         TestTrue(!os_file_exists(cstr(path)));
         test_app.grp_names = bstrlist_open();
         test_app.path_app_data = bfromcstr(tempdir);
         check(sv_app_findgroupnames(&test_app));
         bstrlist_sort(test_app.grp_names);
-        bsetfmt(path, "%s%sno_main_db%sno_main_db_index.db",
-            cstr(userdata), pathsep, pathsep);
+        bsetfmt(path, "%s%sno_main_db%sno_main_db_index.db", cstr(userdata),
+            pathsep, pathsep);
         check(sv_file_readfile(cstr(path), contents));
         TestEqList("expected|no_main_db", test_app.grp_names);
         TestEqs("i3", cstr(contents));
     }
 
-    SV_TEST("incomplete group with .db files, get the latest") {
+    SV_TEST("incomplete group with .db files, get the latest")
+    {
         TEST_OPEN_EX(bstring, userdata, tests_make_subdir(tempdir, "userdata"));
         TEST_OPEN_EX(sv_app, test_app, {});
         TEST_OPEN2(bstring, path, contents);
-        bsetfmt(path, "%s%sno_main_db_hex%sreadytoupload",
-            cstr(userdata), pathsep, pathsep);
+        bsetfmt(path, "%s%sno_main_db_hex%sreadytoupload", cstr(userdata),
+            pathsep, pathsep);
         TestTrue(os_create_dirs(cstr(path)));
         bsetfmt(path, "%s%sno_main_db_hex%sreadytoupload%s00001_index.db",
             cstr(userdata), pathsep, pathsep, pathsep);
@@ -329,7 +355,8 @@ SV_BEGIN_TEST_SUITE(tests_find_groups)
         TestEqList("expected|no_main_db|no_main_db_hex", test_app.grp_names);
     }
 
-    SV_TEST("cleanup") {
+    SV_TEST("cleanup")
+    {
         TEST_OPEN(bstring, path);
         bsetfmt(path, "%s%suserdata%sexpected", tempdir, pathsep, pathsep);
         tests_cleardir(cstr(path));
@@ -337,8 +364,7 @@ SV_BEGIN_TEST_SUITE(tests_find_groups)
         tests_cleardir(cstr(path));
         bsetfmt(path, "%s%suserdata%sno_main_db", tempdir, pathsep, pathsep);
         tests_cleardir(cstr(path));
-        bsetfmt(path, "%s%suserdata%sno_main_db_hex",
-            tempdir, pathsep, pathsep);
+        bsetfmt(path, "%s%suserdata%sno_main_db_hex", tempdir, pathsep, pathsep);
         tests_cleardir(cstr(path));
         bsetfmt(path, "%s%suserdata", tempdir, pathsep);
         tests_cleardir(cstr(path));

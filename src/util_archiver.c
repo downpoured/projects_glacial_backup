@@ -14,18 +14,15 @@ GNU General Public License for more details.
 
 #include "util_archiver.h"
 
-check_result ar_manager_open(ar_manager *self,
-    const char *pathapp,
-    const char *grpname,
-    uint32_t collectionid,
-    uint32_t archivesize)
+check_result ar_manager_open(ar_manager *self, const char *pathapp,
+    const char *grpname, uint32_t collectionid, uint32_t archivesize)
 {
     set_self_zero();
     self->ar = ar_util_open();
-    self->path_working = bformat("%s%stemp%sarchived",
-        pathapp, pathsep, pathsep);
-    self->path_staging = bformat("%s%suserdata%s%s%sstaging",
-        pathapp, pathsep, pathsep, grpname, pathsep);
+    self->path_working =
+        bformat("%s%stemp%sarchived", pathapp, pathsep, pathsep);
+    self->path_staging = bformat("%s%suserdata%s%s%sstaging", pathapp, pathsep,
+        pathsep, grpname, pathsep);
     self->path_readytoupload = bformat("%s%suserdata%s%s%sreadytoupload",
         pathapp, pathsep, pathsep, grpname, pathsep);
 
@@ -43,8 +40,7 @@ check_result ar_manager_begin(ar_manager *self)
     sv_result currenterr = {};
 
     /* clear tmp folders */
-    sv_log_fmt("ar_manager_begin, collection=%u",
-        self->collectionid);
+    sv_log_fmt("ar_manager_begin, collection=%u", self->collectionid);
     check_b(os_create_dirs(cstr(self->path_working)),
         "couldn't create or access %s", cstr(self->path_working));
     check(os_tryuntil_deletefiles(cstr(self->path_working), "*"));
@@ -61,10 +57,10 @@ cleanup:
 check_result ar_manager_advance_to_next(ar_manager *self)
 {
     sv_result currenterr = {};
-    bstring namestextpath = bformat("%s%sfilenames.txt",
-        cstr(self->path_working), pathsep);
-    sv_log_fmt("finishing archive %s with %d files",
-        cstr(self->currentarchive), self->current_names->qty);
+    bstring namestextpath =
+        bformat("%s%sfilenames.txt", cstr(self->path_working), pathsep);
+    sv_log_fmt("finishing archive %s with %d files", cstr(self->currentarchive),
+        self->current_names->qty);
 
     if (self->currentarchivenum > 0 && self->current_names->qty > 0)
     {
@@ -84,12 +80,8 @@ check_result ar_manager_advance_to_next(ar_manager *self)
     self->currentarchivenum++;
     bstrlist_clear(self->current_names);
     sv_array_truncatelength(&self->current_sizes, 0);
-    bsetfmt(self->currentarchive,
-        "%s%s%05x_%05x.tar",
-        cstr(self->path_staging),
-        pathsep,
-        self->collectionid,
-        self->currentarchivenum);
+    bsetfmt(self->currentarchive, "%s%s%05x_%05x.tar", cstr(self->path_staging),
+        pathsep, self->collectionid, self->currentarchivenum);
 
     sv_log_writes("starting", cstr(self->currentarchive));
     sv_file_close(&self->namestextfile);
@@ -100,11 +92,8 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_manager_add(ar_manager *self,
-    const char *input,
-    bool already_compressed,
-    uint64_t contentid,
-    uint32_t *archivenumber,
+check_result ar_manager_add(ar_manager *self, const char *input,
+    bool already_compressed, uint64_t contentid, uint32_t *archivenumber,
     uint64_t *compressedsize)
 {
     sv_result currenterr = {};
@@ -122,7 +111,7 @@ check_result ar_manager_add(ar_manager *self,
         }
 
         /* add directly into the tar */
-        char namewithinarchive[PATH_MAX] = { 0 };
+        char namewithinarchive[PATH_MAX] = {0};
         snprintf(namewithinarchive, countof(namewithinarchive) - 1,
             "%08llx.file", castull(contentid));
         check(ar_util_add(&self->ar, cstr(self->currentarchive), input,
@@ -132,8 +121,8 @@ check_result ar_manager_add(ar_manager *self,
     else
     {
         /* make a xz file */
-        bsetfmt(self->ar.tmp_xz_name, "%s%s%08llx.xz",
-            cstr(self->path_working), pathsep, castull(contentid));
+        bsetfmt(self->ar.tmp_xz_name, "%s%s%08llx.xz", cstr(self->path_working),
+            pathsep, castull(contentid));
         check_b(os_tryuntil_remove(cstr(self->ar.tmp_xz_name)),
             "couldn't delete %s", cstr(self->ar.tmp_xz_name));
         check(ar_util_xz_add(&self->ar, input, cstr(self->ar.tmp_xz_name)));
@@ -146,9 +135,9 @@ check_result ar_manager_add(ar_manager *self,
         }
 
         /* add xz file to the tar */
-        char namewithin[PATH_MAX] = { 0 };
-        snprintf(namewithin, countof(namewithin) - 1,
-            "%08llx.xz", castull(contentid));
+        char namewithin[PATH_MAX] = {0};
+        snprintf(namewithin, countof(namewithin) - 1, "%08llx.xz",
+            castull(contentid));
         check_b(*compressedsize > 0, "file %s cannot have size 0",
             cstr(self->ar.tmp_xz_name));
         check(ar_util_add(&self->ar, cstr(self->currentarchive),
@@ -161,8 +150,7 @@ check_result ar_manager_add(ar_manager *self,
 
     *archivenumber = self->currentarchivenum;
     sv_array_add64u(&self->current_sizes, *compressedsize);
-    fprintf(self->namestextfile.file, "%08llx\t%s\n",
-        castull(contentid), input);
+    fprintf(self->namestextfile.file, "%08llx\t%s\n", castull(contentid), input);
 
 cleanup:
     return currenterr;
@@ -180,13 +168,13 @@ check_result ar_manager_finish(ar_manager *self)
 
     /* delete temporary files */
     bsetfmt(pattern, "%05llx_*.tar", castull(self->collectionid));
-    check(os_tryuntil_deletefiles(cstr(self->path_readytoupload),
-        cstr(pattern)));
+    check(
+        os_tryuntil_deletefiles(cstr(self->path_readytoupload), cstr(pattern)));
 
     /* move files from staging to readytoupload */
     int moved = 0;
-    check(os_tryuntil_movebypattern(cstr(self->path_staging),
-        "*.tar", cstr(self->path_readytoupload), true, &moved));
+    check(os_tryuntil_movebypattern(cstr(self->path_staging), "*.tar",
+        cstr(self->path_readytoupload), true, &moved));
 
 cleanup:
     bdestroy(pattern);
@@ -194,36 +182,30 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_manager_restore(ar_manager *self,
-    const char *archive,
-    uint64_t contentid,
-    const char *working_dir_archived,
-    const char *dest)
+check_result ar_manager_restore(ar_manager *self, const char *archive,
+    uint64_t contentid, const char *working_dir_archived, const char *dest)
 {
     sv_result currenterr = {};
     bstring destparent = bstring_open();
     bstring was_restrict_write_access = bstrcpy(restrict_write_access);
-    bstring namewithin = bformat("%08llx.*",
-        castull(contentid));
-    bstring path_file = bformat("%s%s%08llx.file",
-        working_dir_archived, pathsep, castull(contentid));
-    bstring path_xz = bformat("%s%s%08llx.xz",
-        working_dir_archived, pathsep, castull(contentid));
+    bstring namewithin = bformat("%08llx.*", castull(contentid));
+    bstring path_file = bformat(
+        "%s%s%08llx.file", working_dir_archived, pathsep, castull(contentid));
+    bstring path_xz = bformat(
+        "%s%s%08llx.xz", working_dir_archived, pathsep, castull(contentid));
 
     sv_log_fmt("restore %s file %08llx to %s", archive, contentid, dest);
     check_b(os_isabspath(archive) && os_file_exists(archive),
         "couldn't find archive %s.", archive);
-    check_b(os_file_exists(cstr(self->ar.xz_binary)),
-        "couldn't find archiver.");
-    check_b(contentid,
-        "contentid cannot be 0.");
-    check_b(os_tryuntil_remove(cstr(path_file)),
-        "couldn't remove %s", cstr(path_file));
-    check_b(os_tryuntil_remove(cstr(path_xz)),
-        "couldn't remove %s", cstr(path_xz));
+    check_b(os_file_exists(cstr(self->ar.xz_binary)), "couldn't find archiver.");
+    check_b(contentid, "contentid cannot be 0.");
+    check_b(os_tryuntil_remove(cstr(path_file)), "couldn't remove %s",
+        cstr(path_file));
+    check_b(
+        os_tryuntil_remove(cstr(path_xz)), "couldn't remove %s", cstr(path_xz));
 
-    check(ar_util_extract_overwrite(&self->ar, archive,
-        cstr(namewithin), working_dir_archived, self->ar.tmp_results));
+    check(ar_util_extract_overwrite(&self->ar, archive, cstr(namewithin),
+        working_dir_archived, self->ar.tmp_results));
 
     if (os_file_exists(cstr(path_file)))
     {
@@ -237,8 +219,8 @@ check_result ar_manager_restore(ar_manager *self,
     }
     else
     {
-        check_b(false, "nothing found for %s in archive %s",
-            cstr(path_file), archive);
+        check_b(false, "nothing found for %s in archive %s", cstr(path_file),
+            archive);
     }
 
     /* move to destination */
@@ -250,8 +232,7 @@ check_result ar_manager_restore(ar_manager *self,
     bassigncstr(restrict_write_access, cstr(destparent));
     check_b(os_tryuntil_move(cstr(path_file), dest, true),
         "couldn't move %s to %s", cstr(path_file), dest);
-    check_b(os_file_exists(dest),
-        "expected to have moved file to %s", dest);
+    check_b(os_file_exists(dest), "expected to have moved file to %s", dest);
 
 cleanup:
     bassign(restrict_write_access, was_restrict_write_access);
@@ -263,7 +244,7 @@ cleanup:
     return currenterr;
 }
 
-ar_util ar_util_open()
+ar_util ar_util_open(void)
 {
     ar_util self = {};
     self.tar_binary = bstring_open();
@@ -305,38 +286,27 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_util_add(ar_util *self,
-    const char *tarpath,
-    const char *inputpath,
-    const char *namewithin,
-    uint64_t inputsize)
+check_result ar_util_add(ar_util *self, const char *tarpath,
+    const char *inputpath, const char *namewithin, uint64_t inputsize)
 {
     sv_result currenterr = {};
     confirm_writable(tarpath);
     check_b(s_endwith(tarpath, ".tar"), "%s", tarpath);
     bsetfmt(self->tmp_inner_name, "--transform=s/.*/%s/", namewithin);
-    bstr_replaceall(self->tmp_inner_name,
-        "\\", "\\\\"); /* escape backslashes */
-    check_b(!s_contains(namewithin, "/"),
-        "name cannot contain / %s", namewithin);
+    bstr_replaceall(self->tmp_inner_name, "\\", "\\\\"); /* escape backslashes */
+    check_b(
+        !s_contains(namewithin, "/"), "name cannot contain / %s", namewithin);
     check_b(islinux || (inputsize < 1024ULL * 1024 * 1024),
-        "tar on windows does not support files of this size. %s %llu",
-        inputpath, castull(inputsize));
+        "tar on windows does not support files of this size. %s %llu", inputpath,
+        castull(inputsize));
 
     check(get_tar_archive_parameter(tarpath, self->tmp_arg_tar));
-    const char *args[] = {
-        linuxonly(cstr(self->tar_binary))
-        "--append",
+    const char *args[] = {linuxonly(cstr(self->tar_binary)) "--append",
         "--dereference", /* add file symlink points to, not symlink. */
         "--no-wildcards", /* do not use wildcards */
         "--no-unquote", /* do not parse backslash escape sequences */
-        "--format=gnu",
-        cstr(self->tmp_inner_name),
-        cstr(self->tmp_arg_tar),
-        "--",
-        inputpath,
-        NULL
-    };
+        "--format=gnu", cstr(self->tmp_inner_name), cstr(self->tmp_arg_tar),
+        "--", inputpath, NULL};
 
     bsetfmt(self->tmp_results, "Context: tar add %s %s", tarpath, inputpath);
     check(os_tryuntil_run(cstr(self->tar_binary), args, self->tmp_results,
@@ -346,21 +316,14 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_util_verify(ar_util *self,
-    const char *tarpath,
-    const bstrlist *expectedcontents,
-    const sv_array *expectedsizes)
+check_result ar_util_verify(ar_util *self, const char *tarpath,
+    const bstrlist *expectedcontents, const sv_array *expectedsizes)
 {
     sv_result currenterr = {};
     check_b(s_endwith(tarpath, ".tar"), "%s", tarpath);
     check(get_tar_archive_parameter(tarpath, self->tmp_arg_tar));
-    const char *args[] = {
-        linuxonly(cstr(self->tar_binary))
-        "--list",
-        "--verbose",
-        cstr(self->tmp_arg_tar),
-        NULL
-    };
+    const char *args[] = {linuxonly(cstr(self->tar_binary)) "--list",
+        "--verbose", cstr(self->tmp_arg_tar), NULL};
 
     bsetfmt(self->tmp_results, "Context: tar verify %s", tarpath);
     check(os_tryuntil_run(cstr(self->tar_binary), args, self->tmp_results,
@@ -375,11 +338,12 @@ check_result ar_util_verify(ar_util *self,
         bsetfmt(self->tmp_filename, " %llu ",
             castull(sv_array_at64u(expectedsizes, cast32s32u(i))));
         pos = binstr(self->tmp_results, pos + 1, self->tmp_filename);
-        check_b(pos != BSTR_ERR, "couldn't find entry for filesize %s "
-            "in %s", cstr(self->tmp_filename), cstr(self->tmp_results));
+        check_b(pos != BSTR_ERR,
+            "couldn't find entry for filesize %s "
+            "in %s",
+            cstr(self->tmp_filename), cstr(self->tmp_results));
 
-        bsetfmt(self->tmp_filename, " %s\n",
-            blist_view(expectedcontents, i));
+        bsetfmt(self->tmp_filename, " %s\n", blist_view(expectedcontents, i));
         pos = binstr(self->tmp_results, pos + 1, self->tmp_filename);
         check_b(pos != BSTR_ERR, "couldn't find entry for file %s in %s",
             cstr(self->tmp_filename), cstr(self->tmp_results));
@@ -393,14 +357,9 @@ check_result ar_util_xz_verify_impl(ar_util *self, const char *path)
 {
     sv_result currenterr = {};
     check_b(os_getfilesize(path) > 0, "%s should not be 0 bytes", path);
-    const char *args[] = {
-        linuxonly(cstr(self->xz_binary))
-        "--test",
-        "--verbose",
+    const char *args[] = {linuxonly(cstr(self->xz_binary)) "--test", "--verbose",
         "--", /* in case path begins with a - */
-        path,
-        NULL
-    };
+        path, NULL};
 
     bsetfmt(self->tmp_results, "Context: xz validate %s", path);
     check(os_tryuntil_run(cstr(self->xz_binary), args, self->tmp_results,
@@ -422,31 +381,25 @@ check_result ar_util_xz_verify_impl(ar_util *self, const char *path)
         }
 
         check_b(countcolons == 1,
-            "results from xz validate indicate error, %s %s",
-            path, cstr(self->tmp_results));
+            "results from xz validate indicate error, %s %s", path,
+            cstr(self->tmp_results));
     }
 
 cleanup:
     return currenterr;
 }
 
-check_result ar_util_xz_add_impl(ar_util *self,
-    const char *input,
-    const char *dest)
+check_result ar_util_xz_add_impl(
+    ar_util *self, const char *input, const char *dest)
 {
     sv_result currenterr = {};
-    const char *args[] = {
-        linuxonly(cstr(self->xz_binary))
-        "--compress",
-        "--keep",
-        "--stdout",
+    const char *args[] = {linuxonly(cstr(self->xz_binary)) "--compress",
+        "--keep", "--stdout",
         "--force", /* compress even if hardlink, setuid, etc */
         "--check=crc32", /* for added compatibility */
         "-6", /* compression strength 6 */
         "--", /* in case path begins with a - */
-        input,
-        NULL
-    };
+        input, NULL};
 
     /* redirect stdout; there is no flag to specify location. */
     confirm_writable(dest);
@@ -464,23 +417,16 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_util_xz_extract_overwrite_impl(ar_util *self,
-    const char *archive,
-    const char *dest)
+check_result ar_util_xz_extract_overwrite_impl(
+    ar_util *self, const char *archive, const char *dest)
 {
     sv_result currenterr = {};
-    const char *args[] = {
-        linuxonly(cstr(self->xz_binary))
-        "--decompress",
-        "--keep",
-        "--stdout",
-        "--quiet",
+    const char *args[] = {linuxonly(cstr(self->xz_binary)) "--decompress",
+        "--keep", "--stdout", "--quiet",
         "--quiet", /* add --quiet twice to suppress messages in stderr */
         "--force", /* decompress even if setuid, etc */
         "--", /* in case path begins with a - */
-        archive,
-        NULL
-    };
+        archive, NULL};
 
     /* redirect stdout; there is no flag to specify location. */
     confirm_writable(dest);
@@ -493,9 +439,7 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_util_xz_add(ar_util *self,
-    const char *input,
-    const char *dest)
+check_result ar_util_xz_add(ar_util *self, const char *input, const char *dest)
 {
     /* xz-utils on windows does not support unicode names, so use the
     8.3 short path as a workaround. */
@@ -510,17 +454,15 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_util_xz_extract_overwrite(ar_util *self,
-    const char *path,
-    const char *dest)
+check_result ar_util_xz_extract_overwrite(
+    ar_util *self, const char *path, const char *dest)
 {
     sv_result currenterr = {};
     check_b(os_get_short_path(path, self->tmp_ascii),
         "couldn't get short path %s", path);
     check_b(os_file_exists(cstr(self->tmp_ascii)),
         "couldn't see short path %s %s", path, cstr(self->tmp_ascii));
-    check(ar_util_xz_extract_overwrite_impl(self,
-        cstr(self->tmp_ascii), dest));
+    check(ar_util_xz_extract_overwrite_impl(self, cstr(self->tmp_ascii), dest));
 
 cleanup:
     return currenterr;
@@ -539,38 +481,29 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_util_extract_overwrite(ar_util *self,
-    const char *archive,
-    const char *namewithin,
-    const char *tmpdir,
-    bstring saved_to)
+check_result ar_util_extract_overwrite(ar_util *self, const char *archive,
+    const char *namewithin, const char *tmpdir, bstring saved_to)
 {
     sv_result currenterr = {};
     bsetfmt(self->tmp_filename, "%s%s%s", tmpdir, pathsep, namewithin);
-    check_b(os_tryuntil_remove(cstr(self->tmp_filename)),
-        "couldn't remove %s", cstr(self->tmp_filename));
+    check_b(os_tryuntil_remove(cstr(self->tmp_filename)), "couldn't remove %s",
+        cstr(self->tmp_filename));
     check(get_tar_archive_parameter(archive, self->tmp_arg_tar));
-    const char *args[] = {
-        linuxonly(cstr(self->tar_binary))
-        "--extract",
+    const char *args[] = {linuxonly(cstr(self->tar_binary)) "--extract",
         "--no-same-owner", /* save as current user, we'll chown later */
         "--no-same-permissions", /* save as default mode, we'll chmod later */
         "--wildcards", /* extracting '*' will extract all files */
         "--unlink-first", /* overwrite any existing file */
-        cstr(self->tmp_arg_tar),
-        "--",
-        namewithin,
-        NULL
-    };
+        cstr(self->tmp_arg_tar), "--", namewithin, NULL};
 
     confirm_writable(tmpdir);
     check_b(os_setcwd(tmpdir), "failed to set wd %s", tmpdir);
-    bsetfmt(self->tmp_results, "Context: tar extract %s %s",
-        archive, namewithin);
+    bsetfmt(
+        self->tmp_results, "Context: tar extract %s %s", archive, namewithin);
     check(os_tryuntil_run(cstr(self->tar_binary), args, self->tmp_results,
         self->tmp_combined, true, 0, 0));
-    check_b(s_endwith(namewithin, "*") ||
-        os_file_exists(cstr(self->tmp_filename)),
+    check_b(
+        s_endwith(namewithin, "*") || os_file_exists(cstr(self->tmp_filename)),
         "file not found at %s", cstr(self->tmp_filename));
     bassign(saved_to, self->tmp_filename);
 
@@ -578,11 +511,8 @@ cleanup:
     return currenterr;
 }
 
-check_result ar_util_delete(ar_util *self,
-    const char *archive,
-    const char *tmpdir_tar,
-    const char *tmpdir,
-    const sv_array *contentids)
+check_result ar_util_delete(ar_util *self, const char *archive,
+    const char *tmpdir_tar, const char *tmpdir, const sv_array *contentids)
 {
     sv_result currenterr = {};
     bstring out = bformat("%s%souttmp.tar", tmpdir_tar, pathsep);
@@ -600,25 +530,24 @@ check_result ar_util_delete(ar_util *self,
     even in batches of 100, this is 20 * 64Mb of disk writes, inefficient.
     2) avoid the need to be concerned with cmd limits and building arg list.
     3) tar --delete fails if any of the names aren't within the archive. */
-    check_b(os_create_dirs(tmpdir),
-        "couldn't create %s", tmpdir);
+    check_b(os_create_dirs(tmpdir), "couldn't create %s", tmpdir);
     check(os_tryuntil_deletefiles(tmpdir, "*"));
-    check(ar_util_extract_overwrite(
-        self, archive, "*", tmpdir, NULL));
+    check(ar_util_extract_overwrite(self, archive, "*", tmpdir, NULL));
     sv_log_fmt("delete_from_archive %s tmpdir=%s "
-        "tmp=%s", archive, tmpdir, cstr(out));
+               "tmp=%s",
+        archive, tmpdir, cstr(out));
 
     for (uint32_t i = 0; i < contentids->length; i++)
     {
         sv_log_fmt("del:%08llx", castull(sv_array_at64u(contentids, i)));
-        bsetfmt(self->tmp_filename, "%s%s%08llx.file",
-            tmpdir, pathsep, castull(sv_array_at64u(contentids, i)));
-        check_b(os_remove(cstr(self->tmp_filename)),
-            "couldn't remove %s", cstr(self->tmp_filename));
-        bsetfmt(self->tmp_filename, "%s%s%08llx.xz",
-            tmpdir, pathsep, castull(sv_array_at64u(contentids, i)));
-        check_b(os_remove(cstr(self->tmp_filename)),
-            "couldn't remove %s", cstr(self->tmp_filename));
+        bsetfmt(self->tmp_filename, "%s%s%08llx.file", tmpdir, pathsep,
+            castull(sv_array_at64u(contentids, i)));
+        check_b(os_remove(cstr(self->tmp_filename)), "couldn't remove %s",
+            cstr(self->tmp_filename));
+        bsetfmt(self->tmp_filename, "%s%s%08llx.xz", tmpdir, pathsep,
+            castull(sv_array_at64u(contentids, i)));
+        check_b(os_remove(cstr(self->tmp_filename)), "couldn't remove %s",
+            cstr(self->tmp_filename));
     }
 
     /* create a new archive */
@@ -627,8 +556,8 @@ check_result ar_util_delete(ar_util *self,
     for (int i = 0; i < self->list->qty; i++)
     {
         os_get_filename(blist_view(self->list, i), innername);
-        check(ar_util_add(self, cstr(out),
-            blist_view(self->list, i), cstr(innername), 0));
+        check(ar_util_add(
+            self, cstr(out), blist_view(self->list, i), cstr(innername), 0));
     }
 
     check(os_tryuntil_deletefiles(tmpdir, "*"));

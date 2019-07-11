@@ -21,7 +21,8 @@ check_result test_tbl_contents(svdb_db *db);
 
 SV_BEGIN_TEST_SUITE(whole_tests_db)
 {
-    SV_TEST_() {
+    SV_TEST_()
+    {
         svdb_db db = {};
         bstring path = bformat("%s%srows.db", tempdir, pathsep);
         check(svdb_connect(&db, cstr(path)));
@@ -110,8 +111,8 @@ check_result test_tbl_properties(svdb_db *db)
     bstrlist_clear(list);
     bstrlist_appendcstr(list, "item1");
     bstrlist_appendcstr(list, "invalid\x1einvalid");
-    expect_err_with_message(svdb_setlist(db,
-        s_and_len("TestList"), list), "cannot include");
+    expect_err_with_message(
+        svdb_setlist(db, s_and_len("TestList"), list), "cannot include");
 
     /* there should only be 4 rows now */
     check(svdb_propgetcount(db, &countrows));
@@ -136,8 +137,8 @@ check_result files_addallrowstolistofstrings(void *context,
     return OK;
 }
 
-check_result contents_addallrowstolistofstrings(void *context,
-    const sv_content_row *row)
+check_result contents_addallrowstolistofstrings(
+    void *context, const sv_content_row *row)
 {
     bstrlist *list = (bstrlist *)context;
     bstring s = bstring_open();
@@ -158,18 +159,18 @@ check_result test_tbl_fileslist(svdb_db *db)
     bstring srowgot = bstring_open();
     svdb_txn txn = {};
 
-    sv_file_row row1 = { 0,
-        5 /*contents_id*/, 5000ULL * 1024 * 1024, /*contents_length*/
-        555 /* last_write_time*/,
-        1111 /*most_recent_collection*/, sv_filerowstatus_complete };
-    sv_file_row row2 = { 0,
-        6 /*contents_id*/, 6000ULL * 1024 * 1024, /*contents_length*/
-        666 /* last_write_time*/,
-        1111 /*most_recent_collection*/, sv_filerowstatus_queued };
-    sv_file_row row3 = { 0,
-        7 /*contents_id*/, 7000ULL * 1024 * 1024, /*contents_length*/
-        777 /* last_write_time*/,
-        1000 /*most_recent_collection*/, sv_filerowstatus_queued };
+    sv_file_row row1 = {0, 5 /*contents_id*/,
+        5000ULL * 1024 * 1024, /*contents_length*/
+        555 /* last_write_time*/, 1111 /*most_recent_collection*/,
+        sv_filerowstatus_complete};
+    sv_file_row row2 = {0, 6 /*contents_id*/,
+        6000ULL * 1024 * 1024, /*contents_length*/
+        666 /* last_write_time*/, 1111 /*most_recent_collection*/,
+        sv_filerowstatus_queued};
+    sv_file_row row3 = {0, 7 /*contents_id*/,
+        7000ULL * 1024 * 1024, /*contents_length*/
+        777 /* last_write_time*/, 1000 /*most_recent_collection*/,
+        sv_filerowstatus_queued};
 
     check(svdb_txn_open(&txn, db));
     uint64_t rowid0;
@@ -177,10 +178,11 @@ check_result test_tbl_fileslist(svdb_db *db)
     { /* unique index should prevent duplicate paths. */
         bassigncstr(path1, "/test/path/1");
         bassigncstr(path2, islinux ? "/test/path/1" : "/TEST/PATH/1");
-        check(svdb_filesinsert(db, path1, 8888,
-            sv_filerowstatus_queued, &rowid0));
-        expect_err_with_message(svdb_filesinsert(db, path2, 9999,
-            sv_filerowstatus_queued, NULL), "UNIQUE constraint failed");
+        check(
+            svdb_filesinsert(db, path1, 8888, sv_filerowstatus_queued, &rowid0));
+        expect_err_with_message(
+            svdb_filesinsert(db, path2, 9999, sv_filerowstatus_queued, NULL),
+            "UNIQUE constraint failed");
         uint64_t filescount = 0;
         check(svdb_filescount(db, &filescount));
         TestEqn(1, filescount);
@@ -200,7 +202,7 @@ check_result test_tbl_fileslist(svdb_db *db)
         check(svdb_filesupdate(db, &row3, permissions));
     }
     { /* get by path */
-        sv_file_row rowgot = { 0 };
+        sv_file_row rowgot = {0};
         /* I'd use memcmp to compare, but it does not work because of
             padding after the struct. */
         bassigncstr(path1, "/test/addrows/1");
@@ -223,21 +225,20 @@ check_result test_tbl_fileslist(svdb_db *db)
         TestEqs(cstr(srowexpect), cstr(srowgot));
     }
     { /* try to get by nonexistant path */
-        sv_file_row rowgot = { 0 };
+        sv_file_row rowgot = {0};
         memset(&rowgot, 1, sizeof(rowgot));
         bassigncstr(srowexpect, "/test/addrows/");
         check(svdb_filesbypath(db, srowexpect, &rowgot));
         TestEqn(0, rowgot.id);
     }
     { /* try to update nonexistant row */
-        sv_file_row rowtest = { 1234 /* bogus rowid */, 5, 5, 5 };
-        expect_err_with_message(svdb_filesupdate(db, &rowtest, permissions),
-            "changed no rows");
+        sv_file_row rowtest = {1234 /* bogus rowid */, 5, 5, 5};
+        expect_err_with_message(
+            svdb_filesupdate(db, &rowtest, permissions), "changed no rows");
     }
     { /* query status less than */
         bstrlist *list = bstrlist_open();
-        check(svdb_files_iter(db, sv_makestatus(1111,
-            sv_filerowstatus_complete),
+        check(svdb_files_iter(db, sv_makestatus(1111, sv_filerowstatus_complete),
             list, &files_addallrowstolistofstrings));
         TestEqn(list->qty, 2);
         svdb_files_row_string(&row2, cstr(path2), "pm2", srowexpect);
@@ -255,8 +256,8 @@ check_result test_tbl_fileslist(svdb_db *db)
     }
     { /* query status less than, matches all rows */
         bstrlist *list = bstrlist_open();
-        check(svdb_files_iter(db, svdb_all_files,
-            list, &files_addallrowstolistofstrings));
+        check(svdb_files_iter(
+            db, svdb_all_files, list, &files_addallrowstolistofstrings));
         TestEqn(list->qty, 4);
         bstrlist_close(list);
     }
@@ -286,7 +287,7 @@ check_result test_tbl_fileslist(svdb_db *db)
         /* row 1 should still exist */
         check(svdb_filescount(db, &filescount));
         TestEqn(1, filescount);
-        sv_file_row rowgot = { 0 };
+        sv_file_row rowgot = {0};
         check(svdb_filesbypath(db, path1, &rowgot));
         svdb_files_row_string(&row1, "", "", srowexpect);
         svdb_files_row_string(&rowgot, "", "", srowgot);
@@ -301,8 +302,9 @@ check_result test_tbl_fileslist(svdb_db *db)
     { /* test row-to-string */
         svdb_files_row_string(&row1, "path", "flags", srowexpect);
         TestEqs("contents_length=5, contents_id=5242880000, "
-            "last_write_time=555, flags=flags, most_recent_collection=1111, "
-            "e_status=3, id=2path", cstr(srowexpect));
+                "last_write_time=555, flags=flags, most_recent_collection=1111, "
+                "e_status=3, id=2path",
+            cstr(srowexpect));
     }
 
     check(svdb_txn_rollback(&txn, db));
@@ -324,15 +326,15 @@ check_result test_tbl_collections(svdb_db *db)
     bstring srowgot = bstring_open();
     svdb_txn txn = {};
 
-    sv_collection_row row1 = { 0, 0 /*time*/, 11 /*time_finished*/,
+    sv_collection_row row1 = {0, 0 /*time*/, 11 /*time_finished*/,
         111 /* count_total_files */, 1111 /*count_new_contents*/,
-        1000ULL * 1024 * 1024 /* count_new_contents_bytes*/ };
-    sv_collection_row row2 = { 0, 0 /*time*/, 22 /*time_finished*/,
+        1000ULL * 1024 * 1024 /* count_new_contents_bytes*/};
+    sv_collection_row row2 = {0, 0 /*time*/, 22 /*time_finished*/,
         222 /* count_total_files */, 2222 /*count_new_contents*/,
-        2000ULL * 1024 * 1024 /* count_new_contents_bytes*/ };
-    sv_collection_row row3 = { 0, 0 /*time*/, 33 /*time_finished*/,
+        2000ULL * 1024 * 1024 /* count_new_contents_bytes*/};
+    sv_collection_row row3 = {0, 0 /*time*/, 33 /*time_finished*/,
         333 /* count_total_files */, 3333 /*count_new_contents*/,
-        3000ULL * 1024 * 1024 /* count_new_contents_bytes*/ };
+        3000ULL * 1024 * 1024 /* count_new_contents_bytes*/};
 
     check(svdb_txn_open(&txn, db));
 
@@ -361,7 +363,7 @@ check_result test_tbl_collections(svdb_db *db)
         row3.time = 7;
     }
     { /* should not be able to set timestarted */
-        sv_collection_row rowtest = { row1.id, 9999 /* change timestarted */ };
+        sv_collection_row rowtest = {row1.id, 9999 /* change timestarted */};
         quiet_warnings(true);
         sv_result res = svdb_collectionupdate(db, &rowtest);
         TestTrue(res.code != 0);
@@ -369,7 +371,7 @@ check_result test_tbl_collections(svdb_db *db)
         quiet_warnings(false);
     }
     { /* try to update non-existant row */
-        sv_collection_row rowtest = { 1234 /* bogus rowid */, 0, 0 };
+        sv_collection_row rowtest = {1234 /* bogus rowid */, 0, 0};
         quiet_warnings(true);
         sv_result res = svdb_collectionupdate(db, &rowtest);
         TestTrue(res.code != 0);
@@ -404,8 +406,9 @@ check_result test_tbl_collections(svdb_db *db)
     { /* test row-to-string */
         svdb_collectiontostring(&row1, true, true, srowexpected);
         TestEqs("time=5, time_finished=11, count_total_files=111, "
-            "count_new_contents=1111, count_new_contents_bytes="
-            "1048576000, id=1", cstr(srowexpected));
+                "count_new_contents=1111, count_new_contents_bytes="
+                "1048576000, id=1",
+            cstr(srowexpected));
     }
 
     check(svdb_txn_rollback(&txn, db));
@@ -423,31 +426,32 @@ check_result test_tbl_contents(svdb_db *db)
     bstring srowgot = bstring_open();
     svdb_txn txn = {};
 
-    sv_content_row rowgot = { 0 };
-    sv_content_row row1 = { 0,
-        1000ULL * 1024 * 1024 /*contents_length*/,
+    sv_content_row rowgot = {0};
+    sv_content_row row1 = {0, 1000ULL * 1024 * 1024 /*contents_length*/,
         1001ULL * 1024 * 1024 /* compressed_contents_length */,
         1 /* most_recent_collection */, 11 /* original_collection */,
         111 /* archivenumber */,
-        { { 0x1111111111111111ULL, 0x2222222222222222ULL,
-        0x3333333333333333ULL, 0x4444444444444444ULL } }, /* hash */
-        0x11111111 /* crc32 */ };
-    sv_content_row row2 = { 0,
-        2000ULL * 1024 * 1024 /*contents_length*/,
+        {{0x1111111111111111ULL, 0x2222222222222222ULL, 0x3333333333333333ULL,
+            0x4444444444444444ULL}}, /* hash */
+        0x11111111 /* crc32 */};
+    sv_content_row row2 = {0, 2000ULL * 1024 * 1024 /*contents_length*/,
         2002ULL * 1024 * 1024 /* compressed_contents_length */,
         2 /* most_recent_collection */, 22 /*original_collection*/,
         222 /* archivenumber*/,
-        { { 0x2222222222222222ULL, 0x3333333333333333ULL,
-        0x4444444444444444ULL, 0x5555555555555555ULL, } }, /*hash*/
-        0x22222222 /* crc32 */ };
-    sv_content_row row3 = { 0,
-        3000ULL * 1024 * 1024 /*contents_length*/,
+        {{
+            0x2222222222222222ULL,
+            0x3333333333333333ULL,
+            0x4444444444444444ULL,
+            0x5555555555555555ULL,
+        }}, /*hash*/
+        0x22222222 /* crc32 */};
+    sv_content_row row3 = {0, 3000ULL * 1024 * 1024 /*contents_length*/,
         3003ULL * 1024 * 1024 /* compressed_contents_length */,
         3 /* most_recent_collection */, 33 /*original_collection*/,
         333 /* archivenumber*/,
-        { { 0x3333333333333333ULL, 0x4444444444444444ULL,
-        0x5555555555555555ULL, 0x6666666666666666ULL } }, /*hash*/
-        0x33333333 /* crc32 */ };
+        {{0x3333333333333333ULL, 0x4444444444444444ULL, 0x5555555555555555ULL,
+            0x6666666666666666ULL}}, /*hash*/
+        0x33333333 /* crc32 */};
 
     check(svdb_txn_open(&txn, db));
 
@@ -490,8 +494,8 @@ check_result test_tbl_contents(svdb_db *db)
     }
     { /* get contents by hash */
         memset(&rowgot, 0, sizeof(rowgot));
-        hash256 hash = { { 0x2222222222222222ULL, 0x3333333333333333ULL,
-            0x4444444444444444ULL, 0x5555555555555555ULL } };
+        hash256 hash = {{0x2222222222222222ULL, 0x3333333333333333ULL,
+            0x4444444444444444ULL, 0x5555555555555555ULL}};
         check(svdb_contentsbyhash(db, &hash, 2000ULL * 1024 * 1024, &rowgot));
         svdb_contents_row_string(&row2, srowexpected);
         svdb_contents_row_string(&rowgot, srowgot);
@@ -499,22 +503,22 @@ check_result test_tbl_contents(svdb_db *db)
     }
     { /* right hash but wrong length */
         memset(&rowgot, 1, sizeof(rowgot));
-        hash256 hash = { { 0x2222222222222222ULL, 0x3333333333333333ULL,
-            0x4444444444444444ULL, 0x5555555555555555ULL } };
+        hash256 hash = {{0x2222222222222222ULL, 0x3333333333333333ULL,
+            0x4444444444444444ULL, 0x5555555555555555ULL}};
         check(svdb_contentsbyhash(db, &hash, 1234, &rowgot));
         TestEqn(0, rowgot.id);
     }
     { /* right length but wrong hash */
         memset(&rowgot, 1, sizeof(rowgot));
-        hash256 hash = { { 0x2222222222222222ULL, 0x3333333333333333ULL,
-            0x4444444444444444ULL, 0x5555555555555556ULL /* note final 6 */ } };
+        hash256 hash = {{0x2222222222222222ULL, 0x3333333333333333ULL,
+            0x4444444444444444ULL, 0x5555555555555556ULL /* note final 6 */}};
         check(svdb_contentsbyhash(db, &hash, 2000ULL * 1024 * 1024, &rowgot));
         TestEqn(0, rowgot.id);
     }
     { /* wrong length and wrong hash */
         memset(&rowgot, 1, sizeof(rowgot));
-        hash256 hash = { { 0x2222222222222222ULL, 0x3333333333333333ULL,
-            0x4444444444444444ULL, 0x5555555555555556ULL /* note final 6 */ } };
+        hash256 hash = {{0x2222222222222222ULL, 0x3333333333333333ULL,
+            0x4444444444444444ULL, 0x5555555555555556ULL /* note final 6 */}};
         check(svdb_contentsbyhash(db, &hash, 1234, &rowgot));
         TestEqn(0, rowgot.id);
     }
@@ -533,9 +537,10 @@ check_result test_tbl_contents(svdb_db *db)
     { /* test row-to-string */
         svdb_contents_row_string(&row1, srowexpected);
         TestEqs("hash=1111111111111111 2222222222222222 3333333333333333 "
-            "4444444444444444, crc32=11111111, contents_length=1048576000,"
-            "1049624576, most_recent_collection=1, original_collection=11, "
-            "archivenumber=111, id=1", cstr(srowexpected));
+                "4444444444444444, crc32=11111111, contents_length=1048576000,"
+                "1049624576, most_recent_collection=1, original_collection=11, "
+                "archivenumber=111, id=1",
+            cstr(srowexpected));
     }
     { /* set last referenced */
         check(svdb_contents_setlastreferenced(db, row3.id, 99));
@@ -549,8 +554,8 @@ check_result test_tbl_contents(svdb_db *db)
     }
     { /* set last referenced on missing row */
         quiet_warnings(true);
-        sv_result res = svdb_contents_setlastreferenced(
-            db, 1234 /*bogus rowid*/, 99);
+        sv_result res =
+            svdb_contents_setlastreferenced(db, 1234 /*bogus rowid*/, 99);
         TestTrue(res.code != 0);
         TestTrue(s_contains(cstr(res.msg), "changed no rows"));
         sv_result_close(&res);
@@ -610,4 +615,3 @@ cleanup:
     svdb_txn_close(&txn, db);
     return currenterr;
 }
-

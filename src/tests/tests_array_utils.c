@@ -12,12 +12,13 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 */
 
-#include <math.h>
 #include "tests.h"
+#include <math.h>
 
 SV_BEGIN_TEST_SUITE(tests_sv_array)
 {
-    SV_TEST("uint64 add one at a time") {
+    SV_TEST("uint64 add one at a time")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(uint64_t), 0);
         sv_array_add64u(&a, 10);
         sv_array_add64u(&a, 20);
@@ -28,7 +29,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(3, a.length);
     }
 
-    SV_TEST("add elements one at a time") {
+    SV_TEST("add elements one at a time")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 0);
         int32_t n;
         n = 10;
@@ -43,9 +45,10 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(3, a.length);
     }
 
-    SV_TEST("add elements two at a time") {
+    SV_TEST("add elements two at a time")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 0);
-        int32_t src[] = { 10, 20, 30 };
+        int32_t src[] = {10, 20, 30};
         sv_array_append(&a, (byte *)&src[0], 2);
         sv_array_append(&a, (byte *)&src[1], 2);
         TestEqn(10, *(const int32_t *)sv_array_atconst(&a, 0));
@@ -55,14 +58,16 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(4, a.length);
     }
 
-    SV_TEST("skip allocation when initializing with no capacity") {
+    SV_TEST("skip allocation when initializing with no capacity")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 0);
         TestTrue(NULL == a.buffer);
         TestEqn(0, a.capacity);
         TestEqn(0, a.length);
     }
 
-    SV_TEST("perform allocation when initializing with capacity") {
+    SV_TEST("perform allocation when initializing with capacity")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         TestTrue(NULL != a.buffer);
@@ -70,7 +75,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(0, a.length);
     }
 
-    SV_TEST("verify capacity, 1 item added") {
+    SV_TEST("verify capacity, 1 item added")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         int32_t n = 1;
@@ -79,7 +85,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(1, a.length);
     }
 
-    SV_TEST("verify capacity, 2 items added") {
+    SV_TEST("verify capacity, 2 items added")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         int32_t n = 1;
@@ -89,7 +96,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(2, a.length);
     }
 
-    SV_TEST("verify capacity, 3 items added") {
+    SV_TEST("verify capacity, 3 items added")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         int32_t n = 1;
@@ -100,7 +108,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(3, a.length);
     }
 
-    SV_TEST("verify capacity, 4 items added") {
+    SV_TEST("verify capacity, 4 items added")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         int32_t n = 1;
@@ -112,7 +121,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(4, a.length);
     }
 
-    SV_TEST("verify capacity, 5 items added") {
+    SV_TEST("verify capacity, 5 items added")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         int32_t n = 1;
@@ -125,7 +135,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(5, a.length);
     }
 
-    SV_TEST("uint64 add large values") {
+    SV_TEST("uint64 add large values")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(uint64_t), 0);
         sv_array_add64u(&a, 10);
         sv_array_add64u(&a, 0xffffffff12341234ULL);
@@ -136,7 +147,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(3, a.length);
     }
 
-    SV_TEST("test truncate") {
+    SV_TEST("test truncate")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(uint64_t), 0);
         sv_array_add64u(&a, 10);
         sv_array_add64u(&a, 20);
@@ -149,7 +161,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(4, a.capacity);
     }
 
-    SV_TEST("reserve capacity") {
+    SV_TEST("reserve capacity")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         int32_t n = 10;
@@ -160,7 +173,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(10, *(int32_t *)sv_array_at(&a, 0));
     }
 
-    SV_TEST("add zeros, causing realloc") {
+    SV_TEST("add zeros, causing realloc")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         int32_t n = 10;
@@ -175,7 +189,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         }
     }
 
-    SV_TEST("add many items, causing realloc") {
+    SV_TEST("add many items, causing realloc")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         for (int i = 0; i < 4000; i++)
@@ -192,7 +207,8 @@ SV_BEGIN_TEST_SUITE(tests_sv_array)
         TestEqn(4000, a.length);
     }
 
-    SV_TEST("add from buffer, causing realloc") {
+    SV_TEST("add from buffer, causing realloc")
+    {
         TEST_OPENA(sv_array, a, sizeof32u(int32_t), 3);
         sv_array_truncatelength(&a, 0);
         int32_t n = 10;
@@ -218,118 +234,145 @@ SV_END_TEST_SUITE()
 
 SV_BEGIN_TEST_SUITE(tests_arithmetic)
 {
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(2070, checkedmul32(45, 46));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(4294910784ULL, checkedmul32(123456, 34789));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(4294967295, checkedmul32(1, 4294967295));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(0, checkedmul32(0, 4294967295));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(690, checkedadd32(123, 567));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(4294967295, checkedadd32(2147483647, 2147483648));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(4294967295, checkedadd32(1, 4294967294));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(690, checkedadd32s(123, 567));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(2147483647, checkedadd32s(1073741824, 1073741823));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(2147483647, checkedadd32s(1, 2147483646));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(-112, checkedadd32s(-45, -67));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(INT_MIN, checkedadd32s(-1073741824, -1073741824));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(INT_MIN, checkedadd32s(-1, -2147483647));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(5, countof("abcd"));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(5, sizeof("abcd"));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(0x1111000011112222ULL, make_u64(0x11110000, 0x11112222));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(0x00000000FF345678ULL, make_u64(0x00000000, 0xFF345678));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(0xFF345678FF345678ULL, make_u64(0xFF345678, 0xFF345678));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(0xFF34567800000000ULL, make_u64(0xFF345678, 0x00000000));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(0x12341234ULL, upper32(0x1234123466667777ULL));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(0x66667777ULL, lower32(0x1234123466667777ULL));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(1, nearest_power_of_two(0));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(1, nearest_power_of_two(1));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(2, nearest_power_of_two(2));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(4, nearest_power_of_two(3));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(16, nearest_power_of_two(15));
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         TestEqn(16, nearest_power_of_two(16));
     }
 }
 SV_END_TEST_SUITE()
 
-check_result tests_2d_array_iter_cb(void *context,
-    uint32_t x, uint32_t y, byte *val)
+check_result tests_2d_array_iter_cb(
+    void *context, uint32_t x, uint32_t y, byte *val)
 {
     uint32_t *got_iter = (uint32_t *)context;
     *got_iter += 1 + x + x + y + *val;
@@ -338,7 +381,8 @@ check_result tests_2d_array_iter_cb(void *context,
 
 SV_BEGIN_TEST_SUITE(tests_2d_array)
 {
-    SV_TEST("store data in 1x1 array") {
+    SV_TEST("store data in 1x1 array")
+    {
         TEST_OPENA(sv_2darray, arr, sizeof32u(byte));
         *sv_2darray_get_expand(&arr, 0, 0) = 1;
         sv_array *subarr = (sv_array *)sv_array_at(&arr.arr, 0);
@@ -349,7 +393,8 @@ SV_BEGIN_TEST_SUITE(tests_2d_array)
         TestEqn(1, *sv_2darray_at(&arr, 0, 0));
     }
 
-    SV_TEST("store data in 8x4 array") {
+    SV_TEST("store data in 8x4 array")
+    {
         TEST_OPENA(sv_2darray, arr, sizeof32u(byte));
         *sv_2darray_get_expand(&arr, 7, 3) = 1;
         sv_array *subarr = (sv_array *)sv_array_at(&arr.arr, 7);
@@ -370,7 +415,8 @@ SV_BEGIN_TEST_SUITE(tests_2d_array)
         TestEqn(1, *sv_2darray_at(&arr, 7, 3));
     }
 
-    SV_TEST("set and reset data") {
+    SV_TEST("set and reset data")
+    {
         TEST_OPENA(sv_2darray, arr, sizeof32u(byte));
         *sv_2darray_get_expand(&arr, 4, 3) = 1;
         *sv_2darray_get_expand(&arr, 4, 3) = 2;
@@ -381,7 +427,8 @@ SV_BEGIN_TEST_SUITE(tests_2d_array)
         TestEqn(3, *sv_2darray_at(&arr, 4, 3));
     }
 
-    SV_TEST("store and read data") {
+    SV_TEST("store and read data")
+    {
         TEST_OPENA(sv_2darray, arr, sizeof32u(byte));
         uint32_t expected = 0, got = 0, got_iter = 0;
         for (uint32_t x = 0; x < 16; x++)
@@ -398,8 +445,7 @@ SV_BEGIN_TEST_SUITE(tests_2d_array)
         {
             for (uint32_t y = 0; y < 32; y++)
             {
-                got += 1 + x + x + y +
-                    *sv_2darray_at(&arr, x, y);
+                got += 1 + x + x + y + *sv_2darray_at(&arr, x, y);
             }
         }
 

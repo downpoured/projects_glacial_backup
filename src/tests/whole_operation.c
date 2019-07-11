@@ -14,14 +14,14 @@ GNU General Public License for more details.
 
 #include "tests.h"
 
-check_result test_operations_files(const sv_app *app, sv_group *grp,
-    svdb_db *db, sv_test_hook *hook);
-check_result test_operations_backup(const sv_app *app, sv_group *grp,
-    svdb_db *db, sv_test_hook *hook);
-check_result test_operations_restore(const sv_app *app, sv_group *grp,
-    svdb_db *db, sv_test_hook *hook);
-check_result test_operations_compact(const sv_app *app, sv_group *grp,
-    svdb_db *db, sv_test_hook *hook);
+check_result test_operations_files(
+    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
+check_result test_operations_backup(
+    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
+check_result test_operations_restore(
+    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
+check_result test_operations_compact(
+    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
 
 SV_BEGIN_TEST_SUITE(whole_tests_operations)
 {
@@ -35,10 +35,10 @@ SV_BEGIN_TEST_SUITE(whole_tests_operations)
     app.grp_names = bstrlist_open();
     app.low_access = false;
     app.path_app_data = bfromcstr(tempdir);
-    app.path_temp_archived = bformat("%s%stemp_archived",
-        cstr(app.path_app_data), pathsep);
-    app.path_temp_unarchived = bformat("%s%stemp_unarchived",
-        cstr(app.path_app_data), pathsep);
+    app.path_temp_archived =
+        bformat("%s%stemp_archived", cstr(app.path_app_data), pathsep);
+    app.path_temp_unarchived =
+        bformat("%s%stemp_unarchived", cstr(app.path_app_data), pathsep);
 
     /* create directories */
     check_b(os_create_dirs(cstr(hook.path_group)), "");
@@ -58,7 +58,8 @@ SV_BEGIN_TEST_SUITE(whole_tests_operations)
     check(sv_grp_persist(&db, &grp));
 
     /* run operations */
-    SV_TEST_() {
+    SV_TEST_()
+    {
         check(test_operations_files(&app, &grp, &db, &hook));
         check(test_operations_backup(&app, &grp, &db, &hook));
         check(test_operations_restore(&app, &grp, &db, &hook));
@@ -88,22 +89,14 @@ SV_BEGIN_TEST_SUITE(whole_tests_operations)
 SV_END_TEST_SUITE()
 
 check_result files_addallrowstolistofstrings(void *context,
-    const sv_file_row *row,
-    const bstring path,
-    const bstring permissions);
-check_result contents_addallrowstolistofstrings(void *context,
-    const sv_content_row *row);
-check_result sv_restore_cb(void *context,
-    const sv_file_row *in_files_row,
-    const bstring path,
-    const bstring permissions);
-check_result sv_compact_getcutoff(svdb_db *db,
-    const sv_group *grp,
-    uint64_t *collectionid_to_expire,
-    time_t now);
-check_result svdb_runsql(svdb_db *self,
-    const char *sql,
-    int lensql);
+    const sv_file_row *row, const bstring path, const bstring permissions);
+check_result contents_addallrowstolistofstrings(
+    void *context, const sv_content_row *row);
+check_result sv_restore_cb(void *context, const sv_file_row *in_files_row,
+    const bstring path, const bstring permissions);
+check_result sv_compact_getcutoff(svdb_db *db, const sv_group *grp,
+    uint64_t *collectionid_to_expire, time_t now);
+check_result svdb_runsql(svdb_db *self, const char *sql, int lensql);
 
 void setfileaccessiblity(sv_test_hook *hook, int number, bool isaccessible)
 {
@@ -116,7 +109,8 @@ void setfileaccessiblity(sv_test_hook *hook, int number, bool isaccessible)
     {
         check_fatal(!hook->filelocks[number].os_handle, "cannot not lock twice");
         check_warn(os_lockedfilehandle_open(&hook->filelocks[number],
-            cstr(hook->filenames[number]), false, NULL), "", exit_on_err);
+                       cstr(hook->filenames[number]), false, NULL),
+            "", exit_on_err);
     }
 }
 
@@ -140,9 +134,8 @@ check_result hook_get_file_info(void *phook, os_lockedfilehandle *self,
     return OK;
 }
 
-void test_pattern_matches_list(const char *expected,
-    bstrlist *listexpected,
-    bstrlist *listgot)
+void test_pattern_matches_list(
+    const char *expected, bstrlist *listexpected, bstrlist *listgot)
 {
     if (expected && expected[0])
     {
@@ -150,8 +143,8 @@ void test_pattern_matches_list(const char *expected,
         TestEqn(listexpected->qty - 1, listgot->qty);
         for (int i = 0; i < listgot->qty; i++)
         {
-            TestTrue(fnmatch_simple(blist_view(listexpected, i),
-                blist_view(listgot, i)));
+            TestTrue(fnmatch_simple(
+                blist_view(listexpected, i), blist_view(listgot, i)));
         }
     }
     else
@@ -170,9 +163,11 @@ check_result hook_call_before_process_queue(void *phook, svdb_db *db)
         bstrlist_clear(hook->allcontentrows);
         bstrlist_clear(hook->allfilelistrows);
         check_warn(svdb_contentsiter(db, hook->allcontentrows,
-            &contents_addallrowstolistofstrings), "", exit_on_err);
-        check_warn(svdb_files_iter(db, svdb_all_files,
-            hook->allfilelistrows, &files_addallrowstolistofstrings), "", exit_on_err);
+                       &contents_addallrowstolistofstrings),
+            "", exit_on_err);
+        check_warn(svdb_files_iter(db, svdb_all_files, hook->allfilelistrows,
+                       &files_addallrowstolistofstrings),
+            "", exit_on_err);
 
         test_pattern_matches_list(hook->expectcontentrows,
             hook->listexpectcontentrows, hook->allcontentrows);
@@ -197,15 +192,15 @@ check_result hook_call_before_process_queue(void *phook, svdb_db *db)
         /* file 9: new file,
         content changed between adding-to-queue and adding-to-archive */
         check_warn(sv_file_writefile(cstr(hook->filenames[9]),
-            "changed-second-with-more", "wb"), "", exit_on_err);
+                       "changed-second-with-more", "wb"),
+            "", exit_on_err);
     }
 
     return OK;
 }
 
-check_result hook_call_when_restoring_file(void *phook,
-    const char *originalpath,
-    bstring destpath)
+check_result hook_call_when_restoring_file(
+    void *phook, const char *originalpath, bstring destpath)
 {
     sv_test_hook *hook = (sv_test_hook *)phook;
     if (hook)
@@ -215,12 +210,12 @@ check_result hook_call_when_restoring_file(void *phook,
         someplace simpler (restoreto/a/a/file.txt) */
         TestTrue(os_isabspath(originalpath));
         const char *pathwithoutroot = originalpath + (islinux ? 1 : 3);
-        bstring expectedname = bformat("%s%s%s", cstr(hook->path_restoreto),
-            pathsep, pathwithoutroot);
+        bstring expectedname = bformat(
+            "%s%s%s", cstr(hook->path_restoreto), pathsep, pathwithoutroot);
         TestEqs(cstr(expectedname), cstr(destpath));
         os_get_filename(originalpath, hook->path_tmp);
-        bsetfmt(destpath, "%s%sa%sa%s%s", cstr(hook->path_restoreto),
-            pathsep, pathsep, pathsep, cstr(hook->path_tmp));
+        bsetfmt(destpath, "%s%sa%sa%s%s", cstr(hook->path_restoreto), pathsep,
+            pathsep, pathsep, cstr(hook->path_tmp));
 
         bdestroy(expectedname);
     }
@@ -228,20 +223,18 @@ check_result hook_call_when_restoring_file(void *phook,
 }
 
 check_result tests_op_check_tar_contents(sv_test_hook *hook,
-    const char *archivename,
-    const char *expected,
-    bool check_order)
+    const char *archivename, const char *expected, bool check_order)
 {
     sv_result currenterr = {};
     ar_util ar = ar_util_open();
-    bstring archivepath = bformat("%s%s%s",
-        cstr(hook->path_readytoupload), pathsep, archivename);
+    bstring archivepath =
+        bformat("%s%s%s", cstr(hook->path_readytoupload), pathsep, archivename);
 
     if (expected)
     {
         check(checkbinarypaths(&ar, false, NULL));
-        check(tests_check_tar_contents(&ar, cstr(archivepath), expected,
-            check_order));
+        check(tests_check_tar_contents(
+            &ar, cstr(archivepath), expected, check_order));
     }
 
 cleanup:
@@ -257,7 +250,8 @@ check_result hook_provide_file_list(void *phook, void *context)
     if (hook)
     {
         /* inject our own list of files to be backed up.
-        this way we can control the order and provide a fake last-modified-time. */
+        this way we can control the order and provide a fake last-modified-time.
+      */
         for (uint32_t i = 0; i < countof(hook->filenames); i++)
         {
             if (hook->setlastmodtimes[i])
@@ -304,10 +298,9 @@ check_result test_operations_backup_reset(const sv_app *app, const sv_group *grp
     for (int i = 0; i < countof(hook->filenames); i++)
     {
         bdestroy(hook->filenames[i]);
-        hook->filenames[i] = bformat("%s%sfile%s%d.%s",
-            cstr(hook->path_userfiles), pathsep,
-            unicode ? "\xE1\x84\x81_" : "",
-            i, extension);
+        hook->filenames[i] =
+            bformat("%s%sfile%s%d.%s", cstr(hook->path_userfiles), pathsep,
+                unicode ? "\xE1\x84\x81_" : "", i, extension);
         setfileaccessiblity(hook, i, true);
     }
 
@@ -334,38 +327,39 @@ cleanup:
     return currenterr;
 }
 
-void sv_compact_archivestats_to_string(const sv_compact_state *op,
-    bool includefiles,
-    bstring s)
+void sv_compact_archivestats_to_string(
+    const sv_compact_state *op, bool includefiles, bstring s)
 {
     bstrclear(s);
     bstr_catstatic(s, "stats");
     for (uint32_t i = 0; i < op->archive_stats.arr.length; i++)
     {
-        const sv_array *child = (const sv_array *)sv_array_atconst(
-            &op->archive_stats.arr, i);
+        const sv_array *child =
+            (const sv_array *)sv_array_atconst(&op->archive_stats.arr, i);
         for (uint32_t j = 0; j < child->length; j++)
         {
-            const sv_archive_stats *o = (const sv_archive_stats *)
-                sv_array_atconst(child, j);
+            const sv_archive_stats *o =
+                (const sv_archive_stats *)sv_array_atconst(child, j);
             if (o->count_new > 0 || o->count_old > 0)
             {
                 bformata(s, "|%05x_%05x.tar,", o->original_collection,
                     o->archive_number);
-                bformata(s, "needed=%llu(%llu),old=%llu(%llu),", castull(o->count_new),
-                    castull(o->size_new), castull(o->count_old), castull(o->size_old));
+                bformata(s, "needed=%llu(%llu),old=%llu(%llu),",
+                    castull(o->count_new), castull(o->size_new),
+                    castull(o->count_old), castull(o->size_old));
 
                 if (includefiles)
                 {
                     for (uint32_t k = 0; k < o->old_individual_files.length; k++)
                     {
-                        bformata(s, "%llu,", sv_array_at64u(
-                            &o->old_individual_files, k));
+                        bformata(s, "%llu,",
+                            sv_array_at64u(&o->old_individual_files, k));
                     }
                 }
                 else
                 {
-                    bformata(s, "%d individual files", o->old_individual_files.length);
+                    bformata(s, "%d individual files",
+                        o->old_individual_files.length);
                 }
             }
         }
@@ -388,8 +382,8 @@ void sv_compact_archivestats_to_string(const sv_compact_state *op,
     }
 }
 
-check_result test_operations_compact(const sv_app *app, sv_group *grp,
-    svdb_db *db, sv_test_hook *hook)
+check_result test_operations_compact(
+    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook)
 {
     sv_result currenterr = {};
     TEST_OPEN3(bstring, archivestats, contents, path);
@@ -399,20 +393,23 @@ check_result test_operations_compact(const sv_app *app, sv_group *grp,
     uint32_t countrun = 0;
     const char *currentcontext = "";
     const time_t october_01_2016 = 1475280000, october_02_2016 = 1475366400,
-        october_03_2016 = 1475452800, october_04_2016 = 1475539200,
-        october_20_2016 = 1476921600;
+                 october_03_2016 = 1475452800, october_04_2016 = 1475539200,
+                 october_20_2016 = 1476921600;
 
-    check(test_operations_backup_reset(app, grp, db, hook, 0, "jpg", false, false));
+    check(test_operations_backup_reset(
+        app, grp, db, hook, 0, "jpg", false, false));
     grp->days_to_keep_prev_versions = 0;
 
-    SV_TEST("can't run compact if backup has never been run") {
+    SV_TEST("can't run compact if backup has never been run")
+    {
         collectionid_to_expire = 9999;
         check(sv_compact_getcutoff(
             db, grp, &collectionid_to_expire, october_20_2016));
         TestEqn(0, collectionid_to_expire);
     }
 
-    SV_TEST("can't run compact if backup has never been run") {
+    SV_TEST("can't run compact if backup has never been run")
+    {
         collectionid_to_expire = 9999;
         check(svdb_collectioninsert_helper(
             db, (uint64_t)october_01_2016, (uint64_t)october_01_2016 + 1));
@@ -421,7 +418,8 @@ check_result test_operations_compact(const sv_app *app, sv_group *grp,
         TestEqn(0, collectionid_to_expire);
     }
 
-    SV_TEST("don't return the latest collection, even if old enough to expire") {
+    SV_TEST("don't return the latest collection, even if old enough to expire")
+    {
         collectionid_to_expire = 9999;
         check(svdb_collectioninsert_helper(
             db, (uint64_t)october_02_2016, (uint64_t)october_02_2016 + 1));
@@ -430,79 +428,93 @@ check_result test_operations_compact(const sv_app *app, sv_group *grp,
         TestEqn(1, collectionid_to_expire);
     }
 
-    SV_TEST_() {
-        check(svdb_collectioninsert_helper(db, (uint64_t)october_03_2016,
-            (uint64_t)october_03_2016 + 1));
-        check(svdb_collectioninsert_helper(db, (uint64_t)october_04_2016,
-            (uint64_t)october_04_2016 + 1));
+    SV_TEST_()
+    {
+        check(svdb_collectioninsert_helper(
+            db, (uint64_t)october_03_2016, (uint64_t)october_03_2016 + 1));
+        check(svdb_collectioninsert_helper(
+            db, (uint64_t)october_04_2016, (uint64_t)october_04_2016 + 1));
         grp->days_to_keep_prev_versions = 0;
-        check(sv_compact_getcutoff(db, grp, &collectionid_to_expire, october_20_2016));
+        check(sv_compact_getcutoff(
+            db, grp, &collectionid_to_expire, october_20_2016));
         TestEqn(3, collectionid_to_expire);
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         grp->days_to_keep_prev_versions = 16;
-        check(sv_compact_getcutoff(db, grp, &collectionid_to_expire, october_20_2016));
+        check(sv_compact_getcutoff(
+            db, grp, &collectionid_to_expire, october_20_2016));
         TestEqn(3, collectionid_to_expire);
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         grp->days_to_keep_prev_versions = 17;
-        check(sv_compact_getcutoff(db, grp, &collectionid_to_expire, october_20_2016));
+        check(sv_compact_getcutoff(
+            db, grp, &collectionid_to_expire, october_20_2016));
         TestEqn(2, collectionid_to_expire);
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         grp->days_to_keep_prev_versions = 18;
-        check(sv_compact_getcutoff(db, grp, &collectionid_to_expire, october_20_2016));
+        check(sv_compact_getcutoff(
+            db, grp, &collectionid_to_expire, october_20_2016));
         TestEqn(1, collectionid_to_expire);
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         grp->days_to_keep_prev_versions = 19;
-        check(sv_compact_getcutoff(db, grp, &collectionid_to_expire, october_20_2016));
+        check(sv_compact_getcutoff(
+            db, grp, &collectionid_to_expire, october_20_2016));
         TestEqn(0, collectionid_to_expire);
     }
 
-    SV_TEST_() {
+    SV_TEST_()
+    {
         grp->days_to_keep_prev_versions = 100;
-        check(sv_compact_getcutoff(db, grp, &collectionid_to_expire, october_20_2016));
+        check(sv_compact_getcutoff(
+            db, grp, &collectionid_to_expire, october_20_2016));
         TestEqn(0, collectionid_to_expire);
     }
 
     /* real-world compaction scenario where files are deleted over time */
-    int32_t filesizes[10] = { 30000, 30001, 30002, 30003, 30004, 30005, 30006,
-        30007, 30008, 30009 };
+    int32_t filesizes[10] = {
+        30000, 30001, 30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009};
     uint32_t filepresence[10][5] = {
         /* 001_001.tar */
-        { 1, 1, 1, 1, 0 }, /* file0.jpg is present days 1-4 */
-        { 1, 1, 1, 0, 0 }, /* file1.jpg is present days 1-3 */
-        { 1, 1, 0, 0, 0 }, /* file2.jpg is present days 1-2 */
-                           /* 001_002.tar */
-        { 1, 1, 0, 0, 0 }, /* file3.jpg is present days 1-2 */
-        { 1, 0, 0, 0, 0 }, /* file4.jpg is present days 1-1 */
-                           /* 002_001.tar */
-        { 0, 1, 1, 1, 0 }, /* file5.jpg is present days 2-4 */
-        { 0, 1, 1, 0, 0 }, /* file6.jpg is present days 2-3 */
-        { 0, 1, 0, 0, 0 }, /* file7.jpg is present days 2-2 */
-                           /* 002_002.tar */
-        { 0, 1, 1, 0, 0 }, /* file8.jpg is present days 2-3 */
-        { 0, 1, 0, 0, 0 }, /* file9.jpg is present days 2-2 */
+        {1, 1, 1, 1, 0}, /* file0.jpg is present days 1-4 */
+        {1, 1, 1, 0, 0}, /* file1.jpg is present days 1-3 */
+        {1, 1, 0, 0, 0}, /* file2.jpg is present days 1-2 */
+        /* 001_002.tar */
+        {1, 1, 0, 0, 0}, /* file3.jpg is present days 1-2 */
+        {1, 0, 0, 0, 0}, /* file4.jpg is present days 1-1 */
+        /* 002_001.tar */
+        {0, 1, 1, 1, 0}, /* file5.jpg is present days 2-4 */
+        {0, 1, 1, 0, 0}, /* file6.jpg is present days 2-3 */
+        {0, 1, 0, 0, 0}, /* file7.jpg is present days 2-2 */
+        /* 002_002.tar */
+        {0, 1, 1, 0, 0}, /* file8.jpg is present days 2-3 */
+        {0, 1, 0, 0, 0}, /* file9.jpg is present days 2-2 */
     };
 
     grp->approx_archive_size_bytes = 100 * 1024;
-    check(test_operations_backup_reset(app, grp, db, hook, 0, "jpg", false, false));
+    check(test_operations_backup_reset(
+        app, grp, db, hook, 0, "jpg", false, false));
     hook->expectcontentrows = hook->expectfilerows = NULL;
     for (int day = 0; day < 5; day++)
     {
         for (int file = 0; file < 10; file++)
         {
             hook->setlastmodtimes[file] = filepresence[file][day];
-            if (filepresence[file][day] && !os_file_exists(cstr(hook->filenames[file])))
+            if (filepresence[file][day] &&
+                !os_file_exists(cstr(hook->filenames[file])))
             {
                 bstr_fill(contents, 'a', filesizes[file]);
-                check(sv_file_writefile(cstr(hook->filenames[file]),
-                    cstr(contents), "wb"));
+                check(sv_file_writefile(
+                    cstr(hook->filenames[file]), cstr(contents), "wb"));
             }
             else if (!filepresence[file][day])
             {
@@ -518,12 +530,14 @@ check_result test_operations_compact(const sv_app *app, sv_group *grp,
     we'd have to rewrite numbers in the test */
     int mismatches = 0;
     check(sv_verify_archives(app, grp, db, &mismatches));
-    check(svdb_runsql(db, s_and_len("UPDATE TblContentsList SET "
-        "CompressedContentLength = ContentLength WHERE 1")));
+    check(svdb_runsql(db,
+        s_and_len("UPDATE TblContentsList SET "
+                  "CompressedContentLength = ContentLength WHERE 1")));
     TestEqn(0, mismatches);
     os_clr_console();
 
     /* verify state is what we expect */
+    /* clang-format off */
     hook->expectfilerows = "";
     hook->expectcontentrows = "hash=1ae24f7db75d0ad6 8e024ae5f8544008 2efda40e01a7dfb6 3b88c11491f0a5c9, crc32=6693bf41, contents_length=30000,30???, most_recent_collection=4, original_collection=1, archivenumber=1, id=1|"
         "hash=873058c3b7f4ace5 d7bd5b2de07398bd d47151c9e92f8a9e d7d7484c857d9c9f, crc32=e90a5cfa, contents_length=30001,30???, most_recent_collection=3, original_collection=1, archivenumber=1, id=2|"
@@ -1161,36 +1175,37 @@ check_result test_backup_ignore_tag_changes(const sv_app *app, sv_group *grp,
     check(tests_op_check_tar_contents(hook, "00002_00001.tar",
         "00000003.file|00000004.file|00000005.file|filenames.txt"
         "^21|3142|3142|279", true));
+    /* clang-format on */
 
 cleanup:
     bdestroy(large);
     return currenterr;
 }
 
-check_result test_operations_restore(const sv_app *app, sv_group *grp,
-    svdb_db *db, sv_test_hook *hook)
+check_result test_operations_restore(
+    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook)
 {
     sv_result currenterr = {};
     TEST_OPEN_EX(bstrlist *, files_seen, bstrlist_open());
-    TEST_OPEN_EX(bstring, fullrestoreto, bformat("%s%sa%sa",
-        cstr(hook->path_restoreto), pathsep, pathsep));
+    TEST_OPEN_EX(bstring, fullrestoreto,
+        bformat("%s%sa%sa", cstr(hook->path_restoreto), pathsep, pathsep));
     TEST_OPEN(bstring, contents);
 
     /* run backup and add file0.txt, file1.txt. */
     hook->expectcontentrows = hook->expectfilerows = NULL;
-    check(test_operations_backup_reset(
-        app, grp, db, hook, 2, "txt", true, true));
+    check(
+        test_operations_backup_reset(app, grp, db, hook, 2, "txt", true, true));
 
     /* modify file1.txt and add file2.txt. */
-    check(sv_file_writefile(cstr(hook->filenames[1]),
-        "contents-1-altered", "wb"));
+    check(
+        sv_file_writefile(cstr(hook->filenames[1]), "contents-1-altered", "wb"));
     hook->setlastmodtimes[1]++;
-    check(sv_file_writefile(cstr(hook->filenames[2]),
-        "the-contents-2", "wb"));
+    check(sv_file_writefile(cstr(hook->filenames[2]), "the-contents-2", "wb"));
     hook->setlastmodtimes[2]++;
     check(run_backup_and_reconnect(app, grp, db, hook, false));
 
-    enum {
+    enum
+    {
         test_operations_restore_scope_to_one_file = 0,
         test_operations_restore_from_many_archives,
         test_operations_restore_include_older_files,
@@ -1214,15 +1229,15 @@ check_result test_operations_restore(const sv_app *app, sv_group *grp,
         op.working_dir_archived = bstrcpy(app->path_temp_archived);
         op.working_dir_unarchived = bstrcpy(app->path_temp_unarchived);
         op.destdir = bfromcstr(cstr(hook->path_restoreto));
-        op.scope = bfromcstr(i == test_operations_restore_scope_to_one_file ?
-            "*2.txt" : "*");
+        op.scope = bfromcstr(
+            i == test_operations_restore_scope_to_one_file ? "*2.txt" : "*");
         op.destfullpath = bstring_open();
         op.tmp_result = bstring_open();
         op.messages = bstrlist_open();
         op.db = db;
         op.test_context = hook;
-        check(ar_manager_open(&op.archiver, cstr(app->path_app_data),
-            cstr(grp->grpname), 0, 0));
+        check(ar_manager_open(
+            &op.archiver, cstr(app->path_app_data), cstr(grp->grpname), 0, 0));
         check(checkbinarypaths(&op.archiver.ar, false, NULL));
         TestTrue(os_create_dirs(cstr(op.working_dir_archived)));
         TestTrue(os_create_dirs(cstr(op.working_dir_unarchived)));
@@ -1305,10 +1320,10 @@ check_result test_operations_restore(const sv_app *app, sv_group *grp,
             check(sv_file_readfile(cstr(hook->path_tmp), contents));
             TestEqs("contents-0", cstr(contents));
             TestEqn(2, op.messages->qty);
-            TestTrue(s_contains(blist_view(op.messages, 0),
-                "couldn't find archive "));
-            TestTrue(s_contains(blist_view(op.messages, 1),
-                "couldn't find archive "));
+            TestTrue(s_contains(
+                blist_view(op.messages, 0), "couldn't find archive "));
+            TestTrue(s_contains(
+                blist_view(op.messages, 1), "couldn't find archive "));
         }
 
         sv_restore_state_close(&op);
@@ -1318,8 +1333,8 @@ cleanup:
     return currenterr;
 }
 
-check_result test_operations_backup(const sv_app *app, sv_group *grp,
-    svdb_db *db, sv_test_hook *hook)
+check_result test_operations_backup(
+    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook)
 {
     sv_result currenterr = {};
     TestTrue(os_create_dirs(cstr(hook->path_untar)));

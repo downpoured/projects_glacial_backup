@@ -65,7 +65,7 @@ bool os_create_dir_basic(const char *filepath)
 }
 
 /* clear console */
-void os_clr_console()
+void os_clr_console(void)
 {
     ignore_unused_result(system("clear"));
 }
@@ -128,7 +128,7 @@ void os_aligned_free(byte **ptr)
 }
 
 /* timer, measures wall-clock times */
-os_perftimer os_perftimer_start()
+os_perftimer os_perftimer_start(void)
 {
     os_perftimer ret = {};
     ret.timestarted = time(NULL);
@@ -202,7 +202,7 @@ bool os_create_dir_basic(const char *path)
 }
 
 /* clear console */
-void os_clr_console()
+void os_clr_console(void)
 {
     (void)system("cls");
 }
@@ -243,9 +243,9 @@ void os_errno_to_buffer(int err, char *str, size_t str_len)
 /* from win32 error number to a string explanation */
 void os_win32err_to_buffer(unsigned long err, char *buf, size_t buflen)
 {
-    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
-        (DWORD)err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buf, cast64u32u(buflen),
-        NULL);
+    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL, (DWORD)err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buf,
+        cast64u32u(buflen), NULL);
 }
 
 /* allocate aligned memory */
@@ -264,7 +264,7 @@ void os_aligned_free(byte **ptr)
 }
 
 /* timer using QueryPerformanceCounter. very precise over short spans. */
-os_perftimer os_perftimer_start()
+os_perftimer os_perftimer_start(void)
 {
     os_perftimer ret = {};
     LARGE_INTEGER time = {};
@@ -355,7 +355,8 @@ void os_ensure_remove_file_basic(const char *filepath)
 }
 
 /* wrapper around fopen */
-check_result sv_file_open_basic(sv_file *self, const char *path, const char *mode)
+check_result sv_file_open_basic(
+    sv_file *self, const char *path, const char *mode)
 {
     sv_result currenterr = {};
     errno = 0;
@@ -375,4 +376,3 @@ void sv_file_close(sv_file *self)
         set_self_zero();
     }
 }
-
