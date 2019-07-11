@@ -24,7 +24,8 @@ uint64_t os_getfilesize(const char *filepath)
 {
     struct stat64 st = {};
     staticassert(sizeof(st.st_size) == sizeof(uint64_t));
-    log_errno(int ret, stat64(filepath, &st), filepath);
+    int ret = 0;
+    log_errno_to(ret, stat64(filepath, &st), filepath);
     return ret == 0 ? cast64s64u(st.st_size) : 0;
 }
 
@@ -32,7 +33,8 @@ uint64_t os_getmodifiedtime(const char *filepath)
 {
     struct stat64 st = {};
     staticassert(sizeof(st.st_size) == sizeof(uint64_t));
-    log_errno(int ret, stat64(filepath, &st), filepath);
+    int ret = 0;
+    log_errno_to(ret, stat64(filepath, &st), filepath);
     return ret == 0 ? st.st_mtime : 0;
 }
 
@@ -41,13 +43,15 @@ bool os_setmodifiedtime_nearestsecond(const char *filepath, uint64_t t)
     bool ret = false;
     struct stat64 st = {};
     staticassert(sizeof(st.st_size) == sizeof(uint64_t));
-    log_errno(int retstat, stat64(filepath, &st), filepath);
+    int retstat = 0;
+    log_errno_to(retstat, stat64(filepath, &st), filepath);
     if (retstat >= 0)
     {
         struct utimbuf new_times = { 0 };
         new_times.actime = st.st_atime;
         new_times.modtime = (time_t)t;
-        log_errno(int rettime, utime(filepath, &new_times));
+        int rettime = 0;
+        log_errno_to(rettime, utime(filepath, &new_times));
         ret = (rettime == 0);
     }
 
@@ -70,8 +74,9 @@ bool os_create_dir(const char *filepath)
     else
     {
         const mode_t mode = 0755;
-        log_errno(bool ret, mkdir(filepath, mode) == 0, filepath);
-        return ret;
+        int ret = 0;
+        log_errno_to(ret, mkdir(filepath, mode), filepath);
+        return ret == 0;
     }
 }
 
@@ -259,7 +264,7 @@ check_result os_lockedfilehandle_open(
             "expect fd to be > 0");
         int sharing = allowread ?
             (LOCK_SH | LOCK_NB) : (LOCK_EX | LOCK_NB);
-        check_errno(_, flock(self->fd, sharing), path);
+        check_errno(flock(self->fd, sharing), path);
     }
 
     self->os_handle = NULL;
@@ -278,7 +283,7 @@ check_result os_lockedfilehandle_stat(
     sv_result currenterr = {};
     struct stat64 st = {};
     staticassert(sizeof(st.st_size) == sizeof(uint64_t));
-    check_errno(_, fstat64(self->fd, &st), cstr(self->loggingcontext));
+    check_errno(fstat64(self->fd, &st), cstr(self->loggingcontext));
     *size = (uint64_t)st.st_size;
     *modtime = (uint64_t)st.st_mtime;
     os_get_permissions(&st, permissions);
@@ -289,8 +294,8 @@ cleanup:
 
 bool os_setcwd(const char *s)
 {
-    errno = 0;
-    log_errno(int ret, chdir(s), s);
+    int ret = 0;
+    log_errno_to(ret, chdir(s), s);
     return ret == 0;
 }
 
@@ -303,10 +308,11 @@ bstring os_getthisprocessdir()
 {
     errno = 0;
     char buffer[PATH_MAX] = { 0 };
-    log_errno(int len, cast64s32s(readlink(
+    int len = 0;
+    log_errno_to(len, cast64s32s(readlink(
         "/proc/self/exe", buffer, sizeof(buffer) - 1)));
 
-    if (len != -1)
+    if (len >= 0)
     {
         buffer[len] = '\0'; /* ensure null term */
         log_b(os_isabspath(buffer) && os_dir_exists(buffer), "%s", buffer);
@@ -355,7 +361,8 @@ bool os_detect_other_instances(const char *path,
 {
     /* provide O_CLOEXEC so that the duplicate is closed on exec(). */
     confirm_writable(path);
-    log_errno(int pid_file, open(
+    int pid_file = 0;
+    log_errno_to(pid_file, open(
         path, O_CREAT | O_RDWR | O_CLOEXEC, 0666), path);
     if (pid_file < 0)
     {
@@ -363,7 +370,8 @@ bool os_detect_other_instances(const char *path,
         return false;
     }
 
-    log_errno(int ret, flock(pid_file, LOCK_EX | LOCK_NB), path);
+    int ret = 0;
+    log_errno_to(ret, flock(pid_file, LOCK_EX | LOCK_NB), path);
     if (ret != 0 && errno != EWOULDBLOCK)
     {
         close(pid_file);
@@ -393,7 +401,8 @@ bool os_remove(const char *s)
     confirm_writable(s);
     if (os_file_or_dir_exists(s, &is_file))
     {
-        log_errno(int st, remove(s), s);
+        int st = 0;
+        log_errno_to(st, remove(s), s);
         ret = (st == 0);
     }
 
@@ -568,13 +577,13 @@ check_result os_set_permissions(const char *filepath,
                 filepath,
                 castull(grp),
                 castull(user));
-            check_errno(_, chown(filepath, (uid_t)user, (gid_t)grp));
+            check_errno(chown(filepath, (uid_t)user, (gid_t)grp));
         }
 
         if (perms != UINT64_MAX)
         {
             sv_log_fmt("chmod %s(%d)", filepath, castull(perms));
-            check_errno(_, chmod(filepath, (mode_t)perms));
+            check_errno(chmod(filepath, (mode_t)perms));
         }
     }
 
@@ -586,7 +595,8 @@ cleanup:
 bool os_try_set_readable(const char *filepath, bool setreadable)
 {
     struct stat64 st = { 0 };
-    log_errno(int result, stat64(filepath, &st));
+    int result = 0;
+    log_errno_to(result, stat64(filepath, &st));
     if (result == 0)
     {
         if ((setreadable && (st.st_mode & S_IRUSR) != 0) ||
@@ -608,7 +618,7 @@ bool os_try_set_readable(const char *filepath, bool setreadable)
                 mode = (mode & ~((uint32_t)S_IRGRP)); /* read perms, group */
             }
 
-            log_errno(result, chmod(filepath, mode));
+            log_errno_to(result, chmod(filepath, mode));
             return result == 0;
         }
     }
@@ -850,7 +860,7 @@ check_result os_run_process_parent(
     close_set_invalid(child_to_parent[1]);
     while (true)
     {
-        log_errno(read_result, cast64s32s(read(
+        log_errno_to(read_result, cast64s32s(read(
             child_to_parent[0], buffer, countof(buffer))));
 
         if (read_result <= 0)
@@ -859,7 +869,7 @@ check_result os_run_process_parent(
         }
         else if (stdout_to_file)
         {
-            check_errno(_, cast64s32s(write(
+            check_errno(cast64s32s(write(
                 stdout_to_disk, buffer, cast32s32u(read_result))));
         }
         else
@@ -868,7 +878,7 @@ check_result os_run_process_parent(
         }
     }
 
-    check_errno(_, read_result);
+    check_errno(read_result);
 
 cleanup:
     close_set_invalid(stdout_to_disk);
@@ -894,8 +904,10 @@ check_result os_run_process(const char *path,
         "os_run_process needs full path but given %s.", path);
     check_b(os_file_exists(path),
         "os_run_process needs existing file but given %s.", path);
-    check_errno(_, pipe(child_to_parent));
-    check_errno(int forkresult, fork());
+    check_errno(pipe(child_to_parent));
+    int forkresult = 0;
+    log_errno_to(forkresult,  fork());
+    check_b(forkresult >= 0);
     if (forkresult == 0)
     {
         /* child */
@@ -914,7 +926,7 @@ check_result os_run_process(const char *path,
         /* need to waitpid() before going to cleanup and closing handles. */
         sv_result r = os_run_process_parent(getoutput, stdout_to_file,
             child_to_parent);
-        check_errno(_, waitpid(pid, &status, 0));
+        check_errno(waitpid(pid, &status, 0));
         *retcode = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
         check(r);
     }
@@ -1022,7 +1034,6 @@ bool os_file_or_dir_exists(const char *filepath, bool *is_file)
 {
     sv_wstr wpath = sv_wstr_widen(filepath);
     SetLastError(0);
-    SetLastError(0);
     DWORD file_attr = GetFileAttributesW(wcstr(wpath));
     log_b(file_attr != INVALID_FILE_ATTRIBUTES ||
         GetLastError() == ERROR_FILE_NOT_FOUND ||
@@ -1041,7 +1052,8 @@ uint64_t os_getfilesize(const char *s)
 {
     sv_wstr ws = sv_wstr_widen(s);
     WIN32_FILE_ATTRIBUTE_DATA data = { 0 };
-    log_win32(BOOL ret, GetFileAttributesEx(wcstr(ws),
+    BOOL ret = FALSE;
+    log_win32_to(ret, GetFileAttributesEx(wcstr(ws),
         GetFileExInfoStandard, &data), FALSE, s);
     sv_wstr_close(&ws);
     if (!ret)
@@ -1059,7 +1071,8 @@ uint64_t os_getmodifiedtime(const char *s)
 {
     sv_wstr ws = sv_wstr_widen(s);
     WIN32_FILE_ATTRIBUTE_DATA data = { 0 };
-    log_win32(BOOL ret, GetFileAttributesEx(
+    BOOL ret = FALSE;
+    log_win32_to(ret, GetFileAttributesEx(
         wcstr(ws), GetFileExInfoStandard, &data), FALSE, s);
     sv_wstr_close(&ws);
     if (!ret)
@@ -1077,7 +1090,8 @@ bool os_setmodifiedtime_nearestsecond(const char *s, uint64_t t)
 {
     bool ret = false;
     sv_wstr ws = sv_wstr_widen(s);
-    log_win32(HANDLE handle, CreateFileW(
+    HANDLE handle = 0;
+    log_win32_to(handle, CreateFileW(
         wcstr(ws),
         GENERIC_READ | FILE_WRITE_ATTRIBUTES,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -1089,7 +1103,7 @@ bool os_setmodifiedtime_nearestsecond(const char *s, uint64_t t)
     if (handle != INVALID_HANDLE_VALUE)
     {
         FILETIME ft = { lower32(t), upper32(t) };
-        log_win32(ret, SetFileTime(
+        log_win32_to(ret, SetFileTime(
             handle, NULL, NULL, &ft) != FALSE, false, s);
     }
 
@@ -1114,10 +1128,11 @@ bool os_create_dir(const char *s)
     else
     {
         sv_wstr ws = sv_wstr_widen(s);
-        log_win32(bool ret, CreateDirectoryW(
-            wcstr(ws), NULL) != FALSE, false, s);
+        BOOL ret = FALSE;
+        log_win32_to(ret, CreateDirectoryW(
+            wcstr(ws), NULL), FALSE, s);
         sv_wstr_close(&ws);
-        return ret;
+        return ret != FALSE;
     }
 }
 
@@ -1134,7 +1149,7 @@ bool os_copy(const char *s1, const char *s2, bool overwrite_ok)
     }
     else
     {
-        log_win32(ret, CopyFileW(
+        log_win32_to(ret, CopyFileW(
             wcstr(ws1), wcstr(ws2), !overwrite_ok), FALSE, s1, s2);
     }
 
@@ -1158,7 +1173,7 @@ bool os_move(const char *s1, const char *s2, bool overwrite_ok)
     {
         DWORD flags = overwrite_ok ? MOVEFILE_REPLACE_EXISTING : 0UL;
         flags |= MOVEFILE_COPY_ALLOWED; /* if on a separate drive */
-        log_win32(ret, MoveFileExW(
+        log_win32_to(ret, MoveFileExW(
             wcstr(ws1), wcstr(ws2), flags), FALSE, s1, s2);
     }
 
@@ -1221,8 +1236,9 @@ check_result os_lockedfilehandle_open(
         check_b(self->os_handle,
             "We could not lock the file %s because of %s (%lu)",
             path, buf, GetLastError());
-        check_errno(self->fd, _open_osfhandle(
+        log_errno_to(self->fd,  _open_osfhandle(
             (intptr_t)self->os_handle, O_RDONLY | O_BINARY), path);
+        check_b(self->fd >= 0);
     }
 
 cleanup:
@@ -1241,11 +1257,14 @@ check_result os_lockedfilehandle_stat(
     LARGE_INTEGER filesize = {};
     FILETIME ftcreate = { 0 }, ftaccess = { 0 }, ftwrite = { 0 };
 
-    check_win32(BOOL ret, GetFileSizeEx(
+    BOOL ret = FALSE;
+    log_win32_to(ret, GetFileSizeEx(
         self->os_handle, &filesize), FALSE, cstr(self->loggingcontext));
-    check_win32(ret, GetFileTime(
+    check_b(ret);
+    log_win32_to(ret, GetFileTime(
         self->os_handle, &ftcreate, &ftaccess, &ftwrite),
         FALSE, cstr(self->loggingcontext));
+    check_b(ret);
 
     *size = cast64s64u(filesize.QuadPart);
     *modtime = make_u64(ftwrite.dwHighDateTime, ftwrite.dwLowDateTime);
@@ -1258,7 +1277,8 @@ cleanup:
 bool os_setcwd(const char *s)
 {
     sv_wstr ws = sv_wstr_widen(s);
-    log_win32(BOOL ret, SetCurrentDirectoryW(wcstr(ws)), FALSE, s);
+    BOOL ret = FALSE;
+    log_win32_to(ret, SetCurrentDirectoryW(wcstr(ws)), FALSE, s);
     sv_wstr_close(&ws);
     return ret != FALSE;
 }
@@ -1273,7 +1293,8 @@ bstring os_getthisprocessdir()
     wchar_t buffer[PATH_MAX] = L"";
     bstring fullpath = bstring_open(), dir = bstring_open(),
         result = bstring_open();
-    log_win32(DWORD chars, GetModuleFileNameW(
+    DWORD chars = 0;
+    log_win32_to(chars, GetModuleFileNameW(
         nullptr, buffer, countof(buffer)), 0);
 
     if (chars > 0 && buffer[0])
@@ -1375,11 +1396,11 @@ bool os_remove(const char *s)
         sv_wstr ws = sv_wstr_widen(s);
         if (is_file)
         {
-            log_win32(ret, DeleteFileW(wcstr(ws)) != FALSE, false, s);
+            log_win32_to(ret, DeleteFileW(wcstr(ws)) != FALSE, false, s);
         }
         else
         {
-            log_win32(ret, RemoveDirectoryW(wcstr(ws)) != FALSE, false, s);
+            log_win32_to(ret, RemoveDirectoryW(wcstr(ws)) != FALSE, false, s);
         }
 
         sv_wstr_close(&ws);
@@ -1738,16 +1759,16 @@ check_result os_run_process(const char *path,
     child that writes a lot of data to stdout before it even listens
     to stdin. The child will fill up the buffer and then hang waiting
     for someone to consume its stdout. */
-    check_win32(_, CreatePipe(
+    check_win32(CreatePipe(
         &childstd_out_rd, &childstd_out_wr, &sa, 0),
         FALSE, cstr(useargscombined));
-    check_win32(_, SetHandleInformation(
+    check_win32(SetHandleInformation(
         childstd_out_rd, HANDLE_FLAG_INHERIT, 0),
         FALSE, cstr(useargscombined));
-    check_win32(_, CreatePipe(
+    check_win32(CreatePipe(
         &childstd_in_rd, &childstd_in_wr, &sa, 0),
         FALSE, cstr(useargscombined));
-    check_win32(_, SetHandleInformation(
+    check_win32(SetHandleInformation(
         childstd_in_wr, HANDLE_FLAG_INHERIT, 0),
         FALSE, cstr(useargscombined));
 
@@ -1766,14 +1787,16 @@ check_result os_run_process(const char *path,
     {
         startinfo.hStdError = INVALID_HANDLE_VALUE;
         sv_wstr wstdout_to_file = sv_wstr_widen(stdout_to_file);
-        check_errno(stdout_to_disk, _wopen(
+        log_errno_to(stdout_to_disk, _wopen(
             wcstr(wstdout_to_file),
             O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644));
+        
+        check_b(stdout_to_disk >= 0);
         sv_wstr_close(&wstdout_to_file);
     }
 
     bstrclear(output);
-    check_win32(_, CreateProcessW(NULL,
+    check_win32(CreateProcessW(NULL,
         (wchar_t *)wcstr(argscombined), /* must be writable */
         NULL,          /* process security attributes */
         NULL,          /* primary thread security attributes */
@@ -1795,7 +1818,7 @@ check_result os_run_process(const char *path,
         check_b(providestdin->os_handle > 0,
             "invalid file handle %s",
             cstr(providestdin->loggingcontext));
-        check_win32(_, SetFilePointerEx(
+        check_win32(SetFilePointerEx(
             providestdin->os_handle, location, NULL, FILE_BEGIN),
             FALSE, cstr(providestdin->loggingcontext));
 
@@ -1811,7 +1834,7 @@ check_result os_run_process(const char *path,
             }
 
             DWORD dw_written = 0;
-            log_win32(success, WriteFile(
+            log_win32_to(success, WriteFile(
                 childstd_in_wr, buf, dw_read, &dw_written, NULL),
                 FALSE, cstr(providestdin->loggingcontext));
             check_b(dw_read == dw_written,
@@ -1842,7 +1865,7 @@ check_result os_run_process(const char *path,
                 break;
             }
 
-            check_errno(_, write(stdout_to_disk, buf, dw_read));
+            check_errno(write(stdout_to_disk, buf, dw_read));
         }
     }
     else if (output != NULL)
@@ -1872,13 +1895,14 @@ check_result os_run_process(const char *path,
     }
 
     CloseHandleNull(&childstd_in_wr);
-    log_win32(DWORD result, WaitForSingleObject(
+    DWORD result = 0;
+    log_win32_to(result, WaitForSingleObject(
         procinfo.hProcess, INFINITE),
         WAIT_FAILED, cstr(useargscombined));
     log_b(result == WAIT_OBJECT_0, "got wait result %lu", result);
 
     DWORD dwret = 1;
-    log_win32(_, GetExitCodeProcess(
+    log_win32(GetExitCodeProcess(
         procinfo.hProcess, &dwret),
         FALSE, cstr(useargscombined));
 
@@ -1909,7 +1933,8 @@ bool os_try_set_readable(const char *filepath, bool setreadable)
 {
     sv_wstr wfilepath = sv_wstr_widen(filepath);
     struct _stat64i32 st = { 0 };
-    log_errno(int result, _wstat(wcstr(wfilepath), &st));
+    int result = 0;
+    log_errno_to(result, _wstat(wcstr(wfilepath), &st));
     if (result == 0)
     {
         /* S_IRUSR is read permission, owner */
@@ -1926,7 +1951,7 @@ bool os_try_set_readable(const char *filepath, bool setreadable)
                 newmode = (newmode & ~S_IRUSR);
             }
 
-            log_errno(result, _wchmod(wcstr(wfilepath), newmode));
+            log_errno_to(result, _wchmod(wcstr(wfilepath), newmode));
         }
     }
 
@@ -2011,10 +2036,10 @@ check_result os_restart_as_other_user(const char *data_dir)
     sv_result res = {};
     wchar_t modulepath[PATH_MAX] = L"";
     check_b(os_dir_exists(data_dir), "not found %s", data_dir);
-    check_win32(_, GetModuleFileNameW(
+    check_win32(GetModuleFileNameW(
         nullptr, modulepath, countof(modulepath)), 0,
         "Could not get path to glacial_backup.exe");
-    check_win32(_, GetFileAttributesW(
+    check_win32(GetFileAttributesW(
         modulepath), INVALID_FILE_ATTRIBUTES,
         "Could not get path to glacial_backup.exe");
 
@@ -2166,7 +2191,7 @@ void os_fd_close(int *fd)
 {
     if (*fd && *fd != -1)
     {
-        log_errno(_, close(*fd), NULL);
+        log_errno(close(*fd), NULL);
         *fd = 0;
     }
 }

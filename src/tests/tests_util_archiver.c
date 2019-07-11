@@ -710,7 +710,7 @@ SV_BEGIN_TEST_SUITE(whole_tests_archive_filenames)
         /* test tar --list */
         check(tests_tar_list(&ar, cstr(archive), list));
         TestEqList("namewithin.txt", list);
-        sv_array_clear(&arrsizes);
+        sv_array_truncatelength(&arrsizes, 0);
         sv_array_add64u(&arrsizes, os_getfilesize(cstr(inputs[i])));
         bstrlist_splitcstr(list, "namewithin.txt", '|');
         check(ar_util_verify(&ar, cstr(archive), list, &arrsizes));

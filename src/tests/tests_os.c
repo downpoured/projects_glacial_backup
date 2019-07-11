@@ -292,8 +292,9 @@ SV_BEGIN_TEST_SUITE(tests_write_text_file)
     SV_TEST("low-level io should replace existing contents") {
         TEST_OPEN2(bstring, path, contents);
         check(tmpwritetextfile(tempdir, "a.txt", path, "existing text"));
-        check_errno(int fd1, open(cstr(path),
-            O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644));
+        int fd1 = open(cstr(path),
+            O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
+        check_b(fd1 >= 0);
         int64_t w = write(fd1, "abc", strlen32u("abc"));
         close(fd1);
         check(sv_file_readfile(cstr(path), contents));

@@ -254,15 +254,17 @@ check_result sv_hasher_wholefile(sv_hasher *self,
     }
 
     check_b(fd > 0, "bad file handle %s", self->loggingcontext);
-    check_errno(_, cast64s32s(lseek(
+    check_errno(cast64s32s(lseek(
         fd, 0, SEEK_SET)), "%s", self->loggingcontext);
 
     while (true)
     {
-        check_errno(int bytes, cast64s32s(read(fd, self->buf,
+        int bytes = 0;
+        log_errno_to(bytes, cast64s32s(read(fd, self->buf,
             self->buflen32u)), "%s", self->loggingcontext);
 
-        if (bytes <= 0)
+        check_b(bytes >= 0);
+        if (bytes == 0)
         {
             break;
         }

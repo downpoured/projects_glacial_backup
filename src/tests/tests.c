@@ -185,7 +185,7 @@ sv_result tests_lockfile(bool lock,
     /* runtime locks can't be used on linux because file locks are advisory */
     if (islinux)
     {
-        check_errno(_, chmod(s, lock ? 0111 : 0644));
+        check_errno(chmod(s, lock ? 0111 : 0644));
     }
     else if (lock)
     {

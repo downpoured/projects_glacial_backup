@@ -93,7 +93,6 @@ void sv_array_reserve(sv_array *self, uint32_t requestedcapacity);
 void sv_array_append(sv_array *self, const void *inbuffer, uint32_t incount);
 void sv_array_appendzeros(sv_array *self, uint32_t incount);
 void sv_array_truncatelength(sv_array *self, uint32_t newlength);
-void sv_array_clear(sv_array *self);
 byte *sv_array_at(sv_array *self, uint32_t index);
 const byte *sv_array_atconst(const sv_array *self, uint32_t index);
 uint64_t sv_array_at64u(const sv_array *self, uint32_t index);
@@ -386,54 +385,66 @@ void check_warn_impl(sv_result res,
         debugonly(if (0) { printf(__VA_ARGS__); }) \
     } } while(0)
 
-#define log_errno(vardatatypeandname, expression, ...) \
-    errno = 0; \
-    int CONCAT(log_errnoval, __LINE__) = (expression); \
-    vardatatypeandname = CONCAT(log_errnoval, __LINE__); \
-    const char *CONCAT(log_errnocontext , __LINE__)[4] = {__VA_ARGS__}; \
-    do { if ((CONCAT(log_errnoval, __LINE__)) < 0) { \
-        log_errno_impl( \
-            #expression, \
-            errno, \
-            CONCAT(log_errnocontext, __LINE__), \
-            __FUNCTION__, \
-            __LINE__); \
-    } } while (0)
+#define log_errno_to(varname, expression, ...)                             \
+    errno = 0;                                                                     \
+    varname = (expression);                             \
+    int CONCAT(lasterrno, __LINE__) = GetLastError(); \
+    const char *CONCAT(log_errnocontext, __LINE__)[4] = {__VA_ARGS__};             \
+    do                                                                             \
+    {                                                                              \
+        if ((varname) < 0)                                  \
+        {                                                                          \
+            log_errno_impl(#expression, CONCAT(lasterrno, __LINE__), CONCAT(log_errnocontext, __LINE__), \
+                __FUNCTION__, __LINE__);                                           \
+        }                                                                          \
+    } while (0)
 
-#define check_errno(vardatatypeandname, expression, ...) \
-    log_errno(vardatatypeandname, expression, __VA_ARGS__); \
-    do { if ((CONCAT(log_errnoval, __LINE__)) < 0) { \
-        check_errno_impl( \
-            &currenterr, \
-            #expression, \
-            errno, \
-            CONCAT(log_errnocontext, __LINE__), \
-            __FUNCTION__); \
-        goto cleanup; \
-    } } while (0)
+#define log_errno(expression, ...) \
+    int CONCAT(errno_unnamed, __LINE__); \
+    log_errno_to(CONCAT(errno_unnamed, __LINE__), expression, __VA_ARGS__); \
 
-#define log_win32(vardatatypeandname, expression, failureval, ...) \
-    SetLastError(0); \
-    auto CONCAT(errval, __LINE__) = (expression); \
-    vardatatypeandname = CONCAT(errval, __LINE__); \
-    DWORD CONCAT(lasterrval, __LINE__) = GetLastError(); \
-    const char *CONCAT(errcontext, __LINE__)[4] = {__VA_ARGS__}; \
-    do { if ((CONCAT(errval, __LINE__)) == (failureval)) { \
-        log_errwin32_impl(#expression, \
-            CONCAT(lasterrval, __LINE__), \
-            CONCAT(errcontext, __LINE__), \
-            __FUNCTION__, __LINE__); \
-    } } while (0)
+#define check_errno(expression, ...)           \
+    log_errno(expression, __VA_ARGS__);        \
+    do                                                             \
+    {                                                              \
+        if (CONCAT(errno_unnamed, __LINE__)) < 0)                  \
+        {                                                          \
+            check_errno_impl(&currenterr, #expression, CONCAT(lasterrno, __LINE__),      \
+                CONCAT(log_errnocontext, __LINE__), __FUNCTION__); \
+            goto cleanup;                                          \
+        }                                                          \
+    } while (0)
 
-#define check_win32(vardatatypeandname, expression, failureval, ...) \
-    log_win32(vardatatypeandname, expression, failureval, __VA_ARGS__); \
-    do { if ((CONCAT(errval, __LINE__)) == (failureval)) { \
-        check_errwin32_impl(&currenterr, \
-            #expression, \
-            CONCAT(lasterrval, __LINE__), \
-            CONCAT(errcontext, __LINE__), __FUNCTION__); \
-        goto cleanup; \
-    } } while (0)
+#define log_win32_to(vardatatype, varname, expression, failureval, ...) \
+    SetLastError(0);                                                         \
+    varname = (expression);                  \
+    vardatatype CONCAT(lasterrval, __LINE__) = GetLastError();                     \
+    const char *CONCAT(errcontext, __LINE__)[4] = {__VA_ARGS__};             \
+    do                                                                       \
+    {                                                                        \
+        if ((varname) == (failureval))                      \
+        {                                                                    \
+            log_errwin32_impl(#expression, CONCAT(lasterrval, __LINE__),     \
+                CONCAT(errcontext, __LINE__), __FUNCTION__, __LINE__);       \
+        }                                                                    \
+    } while (0) \
+
+#define log_win32(vardatatype, expression, failureval, ...) \
+    vardatatype CONCAT(errval_unused, __LINE__); \
+    log_win32_to(CONCAT(errval_unused, __LINE__), expression, failureval, __VA_ARGS__); \
+
+#define check_win32(vardatatype, expression, failureval, ...)    \
+    log_win32(vardatatype, expression, failureval, __VA_ARGS__); \
+    do                                                                            \
+    {                                                                             \
+        if ((CONCAT(lasterrval, __LINE__)) == (failureval))                           \
+        {                                                                         \
+            check_errwin32_impl(&currenterr, #expression,                         \
+                CONCAT(lasterrval, __LINE__), CONCAT(errcontext, __LINE__),       \
+                __FUNCTION__);                                                    \
+            goto cleanup;                                                         \
+        }                                                                         \
+    } while (0)
 
 #define CheckBformatStrings 0
 #if CheckBformatStrings && _DEBUG

@@ -83,7 +83,7 @@ check_result ar_manager_advance_to_next(ar_manager *self)
 
     self->currentarchivenum++;
     bstrlist_clear(self->current_names);
-    sv_array_clear(&self->current_sizes);
+    sv_array_truncatelength(&self->current_sizes, 0);
     bsetfmt(self->currentarchive,
         "%s%s%05x_%05x.tar",
         cstr(self->path_staging),

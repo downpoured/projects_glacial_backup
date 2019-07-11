@@ -80,11 +80,6 @@ void sv_array_truncatelength(sv_array *self, uint32_t newlength)
     self->length = newlength;
 }
 
-void sv_array_clear(sv_array *self)
-{
-    sv_array_truncatelength(self, 0);
-}
-
 byte *sv_array_at(sv_array *self, uint32_t index)
 {
     return (byte *)sv_array_atconst(self, index);
@@ -887,7 +882,7 @@ void sv_wstr_truncate(sv_wstr *self, uint32_t len)
 
 void sv_wstr_clear(sv_wstr *self)
 {
-    sv_array_clear(&self->arr);
+    sv_array_truncatelength(&self->arr, 0);
     sv_wstr_append(self, L""); /* ensure null term */
 }
 
