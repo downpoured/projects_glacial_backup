@@ -16,7 +16,7 @@ GNU General Public License for more details.
 
 
 /* globals that can be altered by tests */
-uint32_t max_tries = 10
+uint32_t max_tries = 10;
 uint32_t sleep_between_tries = 500;
 
 #if __linux__
@@ -916,8 +916,6 @@ bstring parse_cmd_line_args(int argc, char **argv, bool *is_low)
     return ret;
 }
 
-const bool islinux = true;
-
 #elif _WIN32
 
 #include <VersionHelpers.h>
@@ -1183,7 +1181,7 @@ check_result os_lockedfilehandle_open(
             path, buf, GetLastError());
         log_errno_to(self->fd,  _open_osfhandle(
             (intptr_t)self->os_handle, O_RDONLY | O_BINARY), path);
-        check_b(self->fd >= 0);
+        check_b(self->fd >= 0, "open()");
     }
 
 cleanup:
@@ -1205,11 +1203,11 @@ check_result os_lockedfilehandle_stat(
     BOOL ret = FALSE;
     log_win32_to(ret, GetFileSizeEx(
         self->os_handle, &filesize), FALSE, cstr(self->loggingcontext));
-    check_b(ret);
+    check_b(ret, "GetFileSizeEx");
     log_win32_to(ret, GetFileTime(
         self->os_handle, &ftcreate, &ftaccess, &ftwrite),
         FALSE, cstr(self->loggingcontext));
-    check_b(ret);
+    check_b(ret, "GetFileTime");
 
     *size = cast64s64u(filesize.QuadPart);
     *modtime = make_u64(ftwrite.dwHighDateTime, ftwrite.dwLowDateTime);
@@ -1650,16 +1648,16 @@ check_result os_run_process(const char *path,
     child that writes a lot of data to stdout before it even listens
     to stdin. The child will fill up the buffer and then hang waiting
     for someone to consume its stdout. */
-    check_win32(CreatePipe(
+    check_win32(BOOL, CreatePipe(
         &childstd_out_rd, &childstd_out_wr, &sa, 0),
         FALSE, cstr(useargscombined));
-    check_win32(SetHandleInformation(
+    check_win32(BOOL, SetHandleInformation(
         childstd_out_rd, HANDLE_FLAG_INHERIT, 0),
         FALSE, cstr(useargscombined));
-    check_win32(CreatePipe(
+    check_win32(BOOL, CreatePipe(
         &childstd_in_rd, &childstd_in_wr, &sa, 0),
         FALSE, cstr(useargscombined));
-    check_win32(SetHandleInformation(
+    check_win32(BOOL, SetHandleInformation(
         childstd_in_wr, HANDLE_FLAG_INHERIT, 0),
         FALSE, cstr(useargscombined));
 
@@ -1682,12 +1680,12 @@ check_result os_run_process(const char *path,
             wcstr(wstdout_to_file),
             O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644));
         
-        check_b(stdout_to_disk >= 0);
+        check_b(stdout_to_disk >= 0, "_wopen()");
         sv_wstr_close(&wstdout_to_file);
     }
 
     bstrclear(output);
-    check_win32(CreateProcessW(NULL,
+    check_win32(BOOL, CreateProcessW(NULL,
         (wchar_t *)wcstr(argscombined), /* must be writable */
         NULL,          /* process security attributes */
         NULL,          /* primary thread security attributes */
@@ -1709,7 +1707,7 @@ check_result os_run_process(const char *path,
         check_b(providestdin->os_handle > 0,
             "invalid file handle %s",
             cstr(providestdin->loggingcontext));
-        check_win32(SetFilePointerEx(
+        check_win32(BOOL, SetFilePointerEx(
             providestdin->os_handle, location, NULL, FILE_BEGIN),
             FALSE, cstr(providestdin->loggingcontext));
 
@@ -1793,7 +1791,7 @@ check_result os_run_process(const char *path,
     log_b(result == WAIT_OBJECT_0, "got wait result %lu", result);
 
     DWORD dwret = 1;
-    log_win32(GetExitCodeProcess(
+    log_win32(BOOL, GetExitCodeProcess(
         procinfo.hProcess, &dwret),
         FALSE, cstr(useargscombined));
 
@@ -1903,10 +1901,10 @@ check_result os_restart_as_other_user(const char *data_dir)
     sv_result res = {};
     wchar_t modulepath[PATH_MAX] = L"";
     check_b(os_dir_exists(data_dir), "not found %s", data_dir);
-    check_win32(GetModuleFileNameW(
+    check_win32(DWORD, GetModuleFileNameW(
         nullptr, modulepath, countof(modulepath)), 0,
         "Could not get path to glacial_backup.exe");
-    check_win32(GetFileAttributesW(
+    check_win32(DWORD, GetFileAttributesW(
         modulepath), INVALID_FILE_ATTRIBUTES,
         "Could not get path to glacial_backup.exe");
 
@@ -1988,8 +1986,6 @@ bstring parse_cmd_line_args(int argc, wchar_t *argv[], bool *is_low)
 
     return ret;
 }
-
-const bool islinux = false;
 
 #else
 #error "platform not yet supported"

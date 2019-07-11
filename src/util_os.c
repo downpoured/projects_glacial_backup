@@ -174,7 +174,8 @@ bool os_file_or_dir_exists_basic(const char *filepath, bool *is_file)
 bool os_remove_file_basic(const char *filepath)
 {
     /* returns false on failure */
-    log_win32(bool, ret, DeleteFileA(filepath) != FALSE, false, filepath);
+    bool ret = false;
+    log_win32_to(ret, DeleteFileA(filepath) != FALSE, false, filepath);
     return ret;
 }
 
@@ -194,7 +195,8 @@ bool os_create_dir_basic(const char *path)
     }
     else
     {
-        log_win32(bool, ret, CreateDirectoryA(path, NULL) != FALSE, false, path);
+        bool ret = false;
+        log_win32_to(ret, CreateDirectoryA(path, NULL) != FALSE, false, path);
         return ret;
     }
 }

@@ -84,6 +84,12 @@ const byte *sv_array_atconst(const sv_array *self, uint32_t index)
     return &self->buffer[byteindex];
 }
 
+/* get pointer to an element (not const) */
+byte *sv_array_at(sv_array *self, uint32_t index)
+{
+    return (byte *)sv_array_atconst(self, index);
+}
+
 /* helper for making an array of uint64_t. */
 sv_array sv_array_open_u64()
 {

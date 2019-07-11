@@ -263,7 +263,7 @@ check_result sv_hasher_wholefile(sv_hasher *self,
         log_errno_to(bytes, cast64s32s(read(fd, self->buf,
             self->buflen32u)), "%s", self->loggingcontext);
 
-        check_b(bytes >= 0);
+        check_b(bytes >= 0, "read()");
         if (bytes == 0)
         {
             break;

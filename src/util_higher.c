@@ -413,18 +413,6 @@ check_result menu_choose_action(const char *msg,
 ----------------more utils-----------------------
 */
 
-byte *sv_array_at(sv_array *self, uint32_t index)
-{
-    return (byte *)sv_array_atconst(self, index);
-}
-
-const byte *sv_array_atconst(const sv_array *self, uint32_t index)
-{
-    check_fatal(index < self->length, "out-of-bounds read");
-    uint32_t byteindex = checkedmul32(index, self->elementsize);
-    return &self->buffer[byteindex];
-}
-
 sv_2darray sv_2darray_open(uint32_t elementsize)
 {
     sv_2darray ret = {};
@@ -890,7 +878,7 @@ const wchar_t *wcstr_warnnull_cstr(const sv_wstr *s)
     {
         if (*(const wchar_t *)sv_array_atconst(&s->arr, i) == L'\0')
         {
-            if (!g_quiet_warnings)
+            if (!is_quiet())
             {
                 alert("wcstr() not allowed if "
                     "string contains binary data.");

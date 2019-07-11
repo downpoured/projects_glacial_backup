@@ -15,7 +15,7 @@ GNU General Public License for more details.
 #ifndef WRAP_ARCHIVER_H_INCLUDE
 #define WRAP_ARCHIVER_H_INCLUDE
 
-#include "util_os.h"
+#include "util_files.h"
 #include "lib_sphash.h"
 
 typedef struct ar_util {
