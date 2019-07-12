@@ -13,8 +13,8 @@ CC=gcc
 CFLAGS=-c -Wall  -Werror -std=c11 -Wno-format-zero-length -Wno-unused-label -Wno-unused-function -Wconversion -D_GNU_SOURCE 
 LDFLAGS=-lm
 SOURCES=dbaccess.c lib_bstrlib.c lib_sphash.c lib_sqlite3.c operations.c  \
-user_config.c util.c util_archiver.c util_audio_tags.c user_interface.c util_os.c \
-tests/tests.c tests/tests.h tests/tests_array_utils.c tests/tests_dbaccess.c tests/tests_operations.c \
+user_config.c user_interface.c util.c util_archiver.c util_audio_tags.c util_higher.c util_files.c util_os.c \
+tests/tests.c tests/tests.h tests/tests_array_utils.c tests/tests_dbaccess.c \
 tests/tests_os.c tests/tests_userconfig.c tests/tests_util.c tests/tests_util_archiver.c \
 tests/tests_util_audio_tags.c tests/whole_db.c tests/whole_operation.c
 
