@@ -20,7 +20,7 @@ void run_all_tests(void)
     bstring dir = os_get_tmpdir("tmpglacial_backup");
     bstring btempdir = tests_make_subdir(cstr(dir), "tests");
     bassign(restrict_write_access, dir);
-    check_fatal(
+    check_fatal(btempdir &&
         blength(btempdir), "could not get test dir at %s", cstr(btempdir));
 
     const char *tempdir = cstr(btempdir);
@@ -113,6 +113,7 @@ bool testlistimpl(int lineno, const char *expected, const bstrlist *list)
 bool testpslistimpl(int lineno, const char *expected, sv_pseudosplit *list)
 {
     bstring joined = bstring_open();
+    check_fatal(joined != NULL, "bstring_open");
     for (uint32_t i = 0; i < list->splitpoints.length; i++)
     {
         bcatcstr(joined, sv_pseudosplit_viewat(list, i));

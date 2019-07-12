@@ -14,7 +14,7 @@ GNU General Public License for more details.
 
 #include "util_files.h"
 
-/* globals that can be altered by tests */
+/* expose to tests */
 uint32_t max_tries = 10;
 uint32_t sleep_between_tries = 500;
 
@@ -29,16 +29,15 @@ uint64_t os_getfilesize(const char *filepath)
     staticassert(sizeof(st.st_size) == sizeof(uint64_t));
     int ret = 0;
     log_errno_to(ret, stat64(filepath, &st), filepath);
-    return ret == 0 ? cast64s64u(st.st_size) : 0;
+    return ret == 0 ? cast64s64u(st.st_size) : 0U;
 }
 
 uint64_t os_getmodifiedtime(const char *filepath)
 {
     struct stat64 st = {};
-    staticassert(sizeof(st.st_size) == sizeof(uint64_t));
     int ret = 0;
     log_errno_to(ret, stat64(filepath, &st), filepath);
-    return ret == 0 ? st.st_mtime : 0;
+    return ret == 0 ? cast64s64u(st.st_mtime) : 0U;
 }
 
 bool os_setmodifiedtime_nearestsecond(const char *filepath, uint64_t t)
@@ -399,14 +398,6 @@ bool os_remove(const char *s)
     return ret;
 }
 
-void os_clock_gettime(int64_t *s, int32_t *ms)
-{
-    struct timespec tm;
-    (void)clock_gettime(CLOCK_REALTIME, &tm);
-    *s = (int64_t)tm.tv_sec;
-    *ms = (int32_t)(tm.tv_nsec / (1000 * 1000));
-}
-
 bool os_get_short_path(const char *path, bstring shortpath)
 {
     /* short path isn't necessary in linux */
@@ -638,7 +629,7 @@ static check_result os_recurse_impl_dir(os_recurse_params *params,
             else
             {
                 os_get_permissions(&st, permissions);
-                check(params->callback(params->context, tmpfullpath, st.st_mtime,
+                check(params->callback(params->context, tmpfullpath, cast64s64u(st.st_mtime),
                     cast64s64u(st.st_size), permissions));
             }
         }
@@ -770,8 +761,9 @@ check_result os_run_process_parent(
     char buffer[buffersize] = "";
     if (stdout_to_file)
     {
-        check_errno(stdout_to_disk,
+        log_errno_to(stdout_to_disk,
             open(stdout_to_file, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0777));
+        check_b(stdout_to_disk >= 0, "open(stdout_to_file) failed");
     }
 
     bstrclear(getoutput);
@@ -820,7 +812,7 @@ check_result os_run_process(const char *path, const char *const args[],
     check_errno(pipe(child_to_parent));
     int forkresult = 0;
     log_errno_to(forkresult, fork());
-    check_b(forkresult >= 0);
+    check_b(forkresult >= 0, "fork()");
     if (forkresult == 0)
     {
         /* child */
@@ -1122,7 +1114,7 @@ check_result os_lockedfilehandle_open(os_lockedfilehandle *self,
         log_errno_to(self->fd,
             _open_osfhandle((intptr_t)self->os_handle, O_RDONLY | O_BINARY),
             path);
-        check_b(self->fd >= 0, "open()");
+        check_b(self->fd >= 0, "open() failed");
     }
 
 cleanup:
@@ -1584,7 +1576,7 @@ check_result os_run_process(const char *path, const char *const args[],
             _wopen(wcstr(wstdout_to_file),
                 O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644));
 
-        check_b(stdout_to_disk >= 0, "_wopen()");
+        check_b(stdout_to_disk >= 0, "_wopen() failed");
         sv_wstr_close(&wstdout_to_file);
     }
 

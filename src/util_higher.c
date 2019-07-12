@@ -230,7 +230,7 @@ check_result readlatestnumberfromfilename(const char *dir, const char *prefix,
     bstring fullprefix = bformat("%s%s%s", dir, pathsep, prefix);
     bstrlist *files_seen = bstrlist_open();
     check_b(os_dir_exists(dir), "dir not found %s", dir);
-    check(os_listfiles(dir, files_seen, false));
+    check(os_listfiles(dir, files_seen, true));
     for (int i = 0; i < files_seen->qty; i++)
     {
         /* don't use strcmp which would sort 02 after 01234 */

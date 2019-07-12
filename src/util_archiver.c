@@ -552,7 +552,7 @@ check_result ar_util_delete(ar_util *self, const char *archive,
 
     /* create a new archive */
     check_b(os_remove(cstr(out)), "couldn't remove %s", cstr(out));
-    check(os_listfiles(tmpdir, self->list, false));
+    check(os_listfiles(tmpdir, self->list, true)); /* should be sorted */
     for (int i = 0; i < self->list->qty; i++)
     {
         os_get_filename(blist_view(self->list, i), innername);

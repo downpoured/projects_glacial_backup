@@ -1245,7 +1245,7 @@ check_result test_operations_restore(
         if (i == test_operations_restore_scope_to_one_file)
         {
             check(svdb_files_iter(op.db, svdb_all_files, &op, &sv_restore_cb));
-            check(os_listfiles(cstr(fullrestoreto), files_seen, false));
+            check(os_listfiles(cstr(fullrestoreto), files_seen, true));
             TestEqn(1, files_seen->qty);
             bsetfmt(hook->path_tmp, "%s%sa%sa%sfile\xE1\x84\x81_2.txt",
                 cstr(hook->path_restoreto), pathsep, pathsep, pathsep);
@@ -1256,7 +1256,7 @@ check_result test_operations_restore(
         else if (i == test_operations_restore_from_many_archives)
         {
             check(svdb_files_iter(op.db, svdb_all_files, &op, &sv_restore_cb));
-            check(os_listfiles(cstr(fullrestoreto), files_seen, false));
+            check(os_listfiles(cstr(fullrestoreto), files_seen, true));
             TestEqn(3, files_seen->qty);
             bsetfmt(hook->path_tmp, "%s%sa%sa%sfile\xE1\x84\x81_0.txt",
                 cstr(hook->path_restoreto), pathsep, pathsep, pathsep);
@@ -1285,7 +1285,7 @@ check_result test_operations_restore(
             check(svdb_filesupdate(db, &row, contents));
             check(svdb_files_iter(op.db, svdb_all_files, &op, &sv_restore_cb));
 
-            check(os_listfiles(cstr(fullrestoreto), files_seen, false));
+            check(os_listfiles(cstr(fullrestoreto), files_seen, true));
             TestEqn(3, files_seen->qty);
             bsetfmt(hook->path_tmp, "%s%sa%sa%sfile\xE1\x84\x81_0.txt",
                 cstr(hook->path_restoreto), pathsep, pathsep, pathsep);
@@ -1313,7 +1313,7 @@ check_result test_operations_restore(
             check(svdb_files_iter(op.db, svdb_all_files, &op, &sv_restore_cb));
             quiet_warnings(false);
 
-            check(os_listfiles(cstr(fullrestoreto), files_seen, false));
+            check(os_listfiles(cstr(fullrestoreto), files_seen, true));
             TestEqn(1, files_seen->qty);
             bsetfmt(hook->path_tmp, "%s%sa%sa%sfile\xE1\x84\x81_0.txt",
                 cstr(hook->path_restoreto), pathsep, pathsep, pathsep);

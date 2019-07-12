@@ -632,7 +632,8 @@ SV_BEGIN_TEST_SUITE(tests_xz)
         check(tests_lockfile(true, cstr(xz), &handle));
 
         expect_err_with_message(
-            ar_util_xz_add(&ar, cstr(path), cstr(xz)), "Permission denied(13)");
+            ar_util_xz_add(&ar, cstr(path), cstr(xz)), 
+            islinux ? "open(stdout_to_file) failed" : "open() failed");
         check(tests_lockfile(false, cstr(xz), &handle));
     }
 
@@ -664,7 +665,7 @@ SV_BEGIN_TEST_SUITE(tests_xz)
         check(tests_lockfile(true, cstr(path), &handle));
         expect_err_with_message(
             ar_util_xz_extract_overwrite(&ar, cstr(xz), cstr(path)),
-            "Permission denied(13)");
+            islinux ? "open(stdout_to_file) failed" : "open() failed");
         check(tests_lockfile(false, cstr(path), &handle));
     }
 

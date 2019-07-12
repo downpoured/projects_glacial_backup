@@ -65,12 +65,12 @@ GNU General Public License for more details.
     } while (0)
 
 #else /* _MSC_VER */
+#include <windows.h>
 #include <direct.h>
 #include <errno.h>
 #include <io.h>
 #include <psapi.h>
 #include <shlobj.h>
-#include <windows.h>
 
 #define staticassert(e) static_assert((e), "")
 #define countof _countof
@@ -337,15 +337,15 @@ static inline bool limited_while_true_impl(int *counter)
         }                                                                    \
     } while (0)
 
-#define log_errno(expression, ...)       \
-    int CONCAT(errno_unnamed, __LINE__); \
-    log_errno_to(CONCAT(errno_unnamed, __LINE__), expression, __VA_ARGS__);
+#define log_errno(expression, ...)     \
+    int CONCAT(ret_unnamed, __LINE__); \
+    log_errno_to(CONCAT(ret_unnamed, __LINE__), expression, __VA_ARGS__);
 
 #define check_errno(expression, ...)                               \
     log_errno(expression, __VA_ARGS__);                            \
     do                                                             \
     {                                                              \
-        if ((CONCAT(errno_unnamed, __LINE__)) < 0)                 \
+        if ((CONCAT(ret_unnamed, __LINE__)) < 0)                   \
         {                                                          \
             check_errno_impl(&currenterr, #expression,             \
                 CONCAT(lasterrno, __LINE__),                       \
@@ -369,15 +369,15 @@ static inline bool limited_while_true_impl(int *counter)
     } while (0)
 
 #define log_win32(vardatatype, expression, failureval, ...) \
-    vardatatype CONCAT(errval_unused, __LINE__);            \
+    vardatatype CONCAT(ret_unnamed, __LINE__);              \
     log_win32_to(                                           \
-        CONCAT(errval_unused, __LINE__), expression, failureval, __VA_ARGS__);
+        CONCAT(ret_unnamed, __LINE__), expression, failureval, __VA_ARGS__);
 
 #define check_win32(vardatatype, expression, failureval, ...)               \
     log_win32(vardatatype, expression, failureval, __VA_ARGS__);            \
     do                                                                      \
     {                                                                       \
-        if ((CONCAT(lasterrval, __LINE__)) == (failureval))                 \
+        if ((CONCAT(ret_unnamed, __LINE__)) == (failureval))                \
         {                                                                   \
             check_errwin32_impl(&currenterr, #expression,                   \
                 CONCAT(lasterrval, __LINE__), CONCAT(errcontext, __LINE__), \

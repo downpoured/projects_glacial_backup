@@ -669,26 +669,26 @@ SV_BEGIN_TEST_SUITE(tests_file_operations)
             strlen("123456789123456789123456789"), os_getfilesize(cstr(path)));
     }
 
-    SV_TEST("set and read modified time, 0x01")
+    SV_TEST("set and read modified time, first")
     {
         TEST_OPEN(bstring, path);
         check(tmpwritetextfile(tempdir, "lmt.txt", path, ""));
         check_b(
-            os_setmodifiedtime_nearestsecond(cstr(path), 0x0111111155555555LL),
+            os_setmodifiedtime_nearestsecond(cstr(path), 0x5f000000LL),
             "");
         long long timegot = (long long)os_getmodifiedtime(cstr(path));
-        TestTrue(llabs(timegot - 0x0111111155555555LL) < 10);
+        TestTrue(llabs(timegot - 0x5f000000LL) < 10);
     }
 
-    SV_TEST("set and read modified time, 0x02")
+    SV_TEST("set and read modified time, second")
     {
         TEST_OPEN(bstring, path);
         check(tmpwritetextfile(tempdir, "lmt.txt", path, ""));
         check_b(
-            os_setmodifiedtime_nearestsecond(cstr(path), 0x0222222255555555LL),
+            os_setmodifiedtime_nearestsecond(cstr(path), 0x5f100000LL),
             "");
         long long timegot = (long long)os_getmodifiedtime(cstr(path));
-        TestTrue(llabs(timegot - 0x0222222255555555LL) < 10);
+        TestTrue(llabs(timegot - 0x5f100000LL) < 10);
     }
 
     SV_TEST_()
@@ -921,7 +921,7 @@ SV_BEGIN_TEST_SUITE(tests_file_locks)
         check(tmpwritetextfile(tempdir, "a.txt", f, "contents"));
         check(sv_file_open(&filewrapper, cstr(f), "ab"));
         expect_err_with_message(
-            os_lockedfilehandle_open(&handle, cstr(f), true, NULL), "Bad file");
+            os_lockedfilehandle_open(&handle, cstr(f), true, NULL), "open() failed");
         os_lockedfilehandle_close(&handle);
         sv_file_close(&filewrapper);
     }

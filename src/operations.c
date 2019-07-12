@@ -686,7 +686,7 @@ check_result sv_backup_record_data_checksums(sv_backup_state *op)
     bstring filenamestartswith = bformat("%05llx_", castull(op->collectionid));
     const char *dir_readytoupload = cstr(op->archiver.path_readytoupload);
     bstrlist *files = bstrlist_open();
-    check(os_listfiles(dir_readytoupload, files, false));
+    check(os_listfiles(dir_readytoupload, files, true));
     for (int i = 0; i < files->qty; i++)
     {
         os_get_filename(blist_view(files, i), filename);
@@ -747,7 +747,7 @@ check_result sv_compact_getcutoff(svdb_db *db, const sv_group *grp,
     {
         /* the collections returned are sorted in order from new to old.
         start the loop at 1, to intentionally skip the newest collection. */
-        time_t seconds = grp->days_to_keep_prev_versions * 60 * 60 * 24;
+        time_t seconds = cast32u32s(grp->days_to_keep_prev_versions * 60 * 60 * 24);
         for (uint32_t i = 1; i < collectionrows.length; i++)
         {
             sv_collection_row *row =
