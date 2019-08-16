@@ -131,6 +131,7 @@ check_result ui_menu_more(sv_app *app, unused(int))
 
 menu_action_entry entries_full[] = {{"About GlacialBackup...", &ui_menu_about},
     {"Run backup...", &sv_application_run, sv_run_backup},
+    {"Sync to cloud...", &sv_application_run, sv_run_sync_cloud},
     {"Restore file(s)...", &sv_application_run, sv_run_restore},
     {"Restore from previous revisions...", &sv_application_run,
         sv_run_restore_from_past},

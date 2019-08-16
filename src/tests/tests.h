@@ -234,6 +234,7 @@ void whole_tests_archive_filenames(const char *tempdir);
 void tests_read_md5_string(const char *tempdir);
 void tests_get_version(const char *tempdir);
 void tests_hash_audio(const char *tempdir);
+void tests_sync_cloud_standalone(const char *tempdir);
 void whole_tests_db(const char *tempdir);
 void whole_tests_operations(const char *tempdir);
 

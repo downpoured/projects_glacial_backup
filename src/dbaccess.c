@@ -189,6 +189,20 @@ const char *schema_cmds[] = {
     "ModifiedTime INTEGER,"
     "CompactionRemovedDataBeforeThisCollection INTEGER,"
     "ChecksumString TEXT)",
+    "CREATE TABLE TblKnownVaults ("
+    "KnownVaultsId INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "AwsRegion TEXT,"
+    "AwsVaultName TEXT,"
+    "AwsVaultARN TEXT)",
+    "CREATE TABLE TblKnownVaultArchives ("
+    "KnownArchiveId INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "KnownVaultsId INTEGER,"
+    "AwsArchiveId TEXT,"
+    "AwsDescription TEXT,"
+    "AwsCreationDate TEXT,"
+    "Size INTEGER,"
+    "Crc32 INTEGER,"
+    "ModifiedTime INTEGER)",
     "CREATE TABLE TblProperties ("
     "PropertyName TEXT PRIMARY KEY,"
     "PropertyVal)",
@@ -210,6 +224,8 @@ const char *schema_cmds[] = {
     "ON TblFilesList(Path)",
     "CREATE INDEX IxTblContentsListHash "
     "ON TblContentsList(ContentsHash1)",
+    "CREATE INDEX IxTblKnownVaultArchivesDescription "
+    "ON TblKnownVaultArchives(AwsDescription)",
 
     /* AUTOINCREMENT means that ids are not re-used. We'll enable it
     even though it isn't required by our logic, for better diagnostics.
@@ -1206,6 +1222,31 @@ void svdb_contents_row_string(const sv_content_row *row, bstring s)
         castull(row->most_recent_collection), row->original_collection,
         row->archivenumber, castull(row->id));
 }
+
+check_result svdb_knownvaults_get(
+    svdb_db *self, sv_array *ids, bstrlist *regions, bstrlist *names, bstrlist *arns)
+{
+
+}
+
+check_result svdb_knownvaults_insert(
+    svdb_db *self, const char *region, const char *name, const char *arn)
+{
+
+}
+
+check_result svdb_vaultarchives_bypath(
+    svdb_db *self, const char *path, uint64_t knownvaultid, uint64_t *outsize, uint64_t *outcrc32, uint64_t *outmodtime)
+{
+
+}
+
+check_result svdb_vaultarchives_insert(
+    svdb_db *self, const char *path, uint64_t knownvaultid, const char *awsid, uint64_t outsize, uint64_t outcrc32, uint64_t outmodtime)
+{
+
+}
+
 
 const uint64_t svdb_all_files = INT64_MAX;
 extern inline sv_filerowstatus sv_getstatus(uint64_t status);

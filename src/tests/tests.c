@@ -56,6 +56,7 @@ void run_all_tests(void)
     tests_read_md5_string(tempdir);
     tests_get_version(tempdir);
     tests_hash_audio(tempdir);
+    tests_sync_cloud_standalone(tempdir);
     whole_tests_db(tempdir);
     whole_tests_operations(tempdir);
 

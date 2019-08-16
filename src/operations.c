@@ -43,6 +43,9 @@ check_result sv_application_run(sv_app *app, int op)
         case sv_run_restore_from_past:
             check(sv_restore(app, &grp, &db, false));
             break;
+        case sv_run_sync_cloud:
+            check(sv_sync_cloud(app, &grp, &db));
+            break;
         default:
             break;
         }
@@ -201,6 +204,7 @@ check_result sv_backup_addtoqueue_cb(void *context, const bstring path,
     uint64_t size = actual_size;
     show_status_update_queue(op);
 
+    check_b(path, "invalid path");
     if (os_recurse_is_dir(actual_lmt, size) ||
         !sv_grp_isincluded(op->grp, cstr(path), op->messages))
     {
@@ -412,6 +416,7 @@ check_result sv_backup_addfile(sv_backup_state *op, os_lockedfilehandle *handle,
     uint64_t contentslength = 0, rawcontentslength = 0, modtimeondisk = 0;
     hash256 hash = {};
     uint32_t crc32 = 0;
+    check_b(path, "invalid path");
     efiletype ext = get_file_extension_info(cstr(path), blength(path));
     check(os_lockedfilehandle_stat(
         handle, &rawcontentslength, &modtimeondisk, permissions));
@@ -620,6 +625,7 @@ check_result sv_backup_compute_preview_cb(void *context,
     os_lockedfilehandle handle = {};
     sv_backup_state *op = (sv_backup_state *)context;
     bool filenotfound = false;
+    check_b(path, "invalid path");
     sv_result result_handle =
         os_lockedfilehandle_open(&handle, cstr(path), true, &filenotfound);
 

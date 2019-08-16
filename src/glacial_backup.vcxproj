@@ -34,6 +34,9 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCpp</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCpp</CompileAs>
     </ClCompile>
+    <ClCompile Include="op_sync_cloud.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCpp</CompileAs>
+    </ClCompile>
     <ClCompile Include="tests\tests.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCpp</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCpp</CompileAs>
@@ -149,6 +152,7 @@
     <ClInclude Include="lib_sphash.h" />
     <ClInclude Include="lib_sqlite3.h" />
     <ClInclude Include="operations.h" />
+    <ClInclude Include="op_sync_cloud.h" />
     <ClInclude Include="tests\tests.h" />
     <ClInclude Include="user_config.h" />
     <ClInclude Include="user_interface.h" />

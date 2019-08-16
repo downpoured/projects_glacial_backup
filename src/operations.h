@@ -15,7 +15,7 @@ GNU General Public License for more details.
 #ifndef OPERATIONS_H_INCLUDE
 #define OPERATIONS_H_INCLUDE
 
-#include "user_config.h"
+#include "op_sync_cloud.h"
 
 typedef enum sv_enum_ops
 {
@@ -26,6 +26,7 @@ typedef enum sv_enum_ops
     sv_run_compact,
     sv_run_verify,
     sv_run_viewinfo,
+    sv_run_sync_cloud,
     sv_set_days_to_keep_prev_versions,
     sv_set_approx_archive_size_bytes,
     sv_set_compact_threshold_bytes,
@@ -151,6 +152,8 @@ check_result sv_compact_impl(
 check_result sv_compact_ask_user(const sv_group *grp, sv_compact_state *op);
 void sv_compact_archivestats_to_string(
     const sv_compact_state *op, bool includefiles, bstring s);
+check_result sv_sync_cloud(
+    const sv_app *app, const sv_group *grp, svdb_db *db);
 
 check_result sv_backup_show_results(sv_backup_state *op);
 check_result sv_backup_show_user(sv_backup_state *op, bool before);

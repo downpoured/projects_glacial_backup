@@ -22,6 +22,8 @@ check_result test_operations_restore(
     const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
 check_result test_operations_compact(
     const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
+check_result test_operations_sync_cloud(
+    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
 
 SV_BEGIN_TEST_SUITE(whole_tests_operations)
 {
@@ -64,6 +66,7 @@ SV_BEGIN_TEST_SUITE(whole_tests_operations)
         check(test_operations_backup(&app, &grp, &db, &hook));
         check(test_operations_restore(&app, &grp, &db, &hook));
         check(test_operations_compact(&app, &grp, &db, &hook));
+        check(test_operations_sync_cloud(&app, &grp, &db, &hook));
     }
 
     /* cleanup */

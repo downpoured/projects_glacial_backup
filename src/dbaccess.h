@@ -197,6 +197,15 @@ check_result svdb_archives_write_checksum(svdb_db *self, uint64_t archiveid,
     uint64_t timemodified, uint64_t compaction_cutoff, const char *checksum,
     const char *filepath);
 
+check_result svdb_knownvaults_get(
+    svdb_db *self, sv_array *ids, bstrlist *regions, bstrlist *names, bstrlist *arns);
+check_result svdb_knownvaults_insert(
+    svdb_db *self, const char *region, const char *name, const char *arn);
+check_result svdb_vaultarchives_bypath(
+    svdb_db *self, const char *path, uint64_t knownvaultid, uint64_t *outsize, uint64_t *outcrc32, uint64_t *outmodtime);
+check_result svdb_vaultarchives_insert(
+    svdb_db *self, const char *path, uint64_t knownvaultid, const char *awsid, uint64_t outsize, uint64_t outcrc32, uint64_t outmodtime);
+
 check_result svdb_txn_open(svdb_txn *self, svdb_db *db);
 check_result svdb_txn_commit(svdb_txn *self, svdb_db *db);
 check_result svdb_txn_rollback(svdb_txn *self, svdb_db *db);
