@@ -38,8 +38,6 @@ and linux installation is much simpler.
 
 */
 
-
-
 #include "op_sync_cloud.h"
 
 check_result roughselectstrfromjson(const char *json, const char *key, bstring result) {
@@ -63,9 +61,10 @@ cleanup:
 
 typedef struct sv_sync_finddirtyfiles
 {
-    bstrlist *files;
-    bstrlist *cloudpaths;
-    uint64_t totalsize;
+    bstrlist *sizes_and_files;
+    uint64_t totalsizedirty;
+    uint64_t countclean;
+    uint64_t totalsizeclean;
     svdb_db *db;
     bstring rootdir;
     uint64_t knownvaultid;
@@ -74,16 +73,14 @@ typedef struct sv_sync_finddirtyfiles
 
 sv_sync_finddirtyfiles sv_sync_finddirtyfiles_open(const char *rootdir) {
     sv_sync_finddirtyfiles ret = {};
-    ret.files = bstrlist_open();
-    ret.cloudpaths = bstrlist_open();
+    ret.sizes_and_files = bstrlist_open();
     ret.rootdir = bfromcstr(rootdir);
     return ret;
 }
 
 void sv_sync_finddirtyfiles_close(sv_sync_finddirtyfiles *self) {
     if (self) {
-        bstrlist_close(self->files);
-        bstrlist_close(self->cloudpaths);
+        bstrlist_close(self->sizes_and_files);
         bdestroy(self->rootdir);
         set_self_zero();
     }
@@ -108,12 +105,35 @@ bstring localpath_to_cloud_path(const char *rootdir, const char *path) {
 check_result sv_sync_finddirtyfiles_isdirty(sv_sync_finddirtyfiles *self,
     const bstring filepath, uint64_t modtime, uint64_t filesize, const char *cloudpath, bool *isdirty) {
     sv_result currenterr = {};
+    *isdirty = true;
+    
     uint64_t cloud_size = 0, cloud_crc32 = 0, cloud_modtime = 0;
     check(svdb_vaultarchives_bypath(self->db, cloudpath, self->knownvaultid, &cloud_size, &cloud_crc32, &cloud_modtime));
-    filepath;
-    modtime;
-    filesize;
-    *isdirty = true;
+    if (cloud_size == 0 && cloud_crc32 == 0 && cloud_modtime == 0) {
+        *isdirty = true;
+        if (self->verbose) {
+            printf("new: %s\n", cloudpath);
+        }
+    }
+    else if (modtime == cloud_modtime && filesize == cloud_size) {
+        /* optimization: if modtime and filesize match, assume they are the same */
+        *isdirty = false;
+    }
+    else {
+        /* compute the crc32. */
+        uint32_t intcrc = 0;
+        check(sv_basic_crc32_wholefile(cstr(filepath), &intcrc));
+        if ((uint64_t)intcrc == cloud_crc32) {
+            *isdirty = false;
+        }
+        else {
+            *isdirty = true;
+            if (self->verbose) {
+                printf("changed: %s\n", cloudpath);
+            }
+        }
+    }
+
 cleanup:
     return currenterr;
 }
@@ -122,18 +142,26 @@ check_result sv_sync_finddirtyfiles_cb(void *context,
     const bstring filepath, uint64_t modtime, uint64_t filesize,
     unused(const bstring)) {
     sv_result currenterr = {};
+    bstring sizeandfile = bstring_open();
     sv_sync_finddirtyfiles *self = (sv_sync_finddirtyfiles *)context;
     bstring cloudpath = localpath_to_cloud_path(cstr(self->rootdir), cstr(filepath));
     bool isdirty = true;
     check(sv_sync_finddirtyfiles_isdirty(self, filepath, modtime, filesize, cstr(cloudpath), &isdirty));
     if (isdirty) {
-        bstrlist_appendcstr(self->cloudpaths, cstr(cloudpath));
-        bstrlist_appendcstr(self->files, cstr(filepath));
-        self->totalsize += filesize;
+        check_b(filesize < INT_MAX, "file is too large %s", cstr(filepath));
+        uint32_t filesize32 = cast64u32u(filesize);
+        bsetfmt(sizeandfile, "%08x|%s", filesize32, cstr(filepath));
+        bstrlist_appendcstr(self->sizes_and_files, cstr(sizeandfile));
+        self->totalsizedirty += filesize;
+    }
+    else {
+        self->countclean += 1;
+        self->totalsizeclean += filesize;
     }
 
   cleanup:
     bdestroy(cloudpath);
+    bdestroy(sizeandfile);
     return currenterr;
 }
 
@@ -151,12 +179,122 @@ cleanup:
     return currenterr;
 }
 
+check_result sv_sync_newvault(svdb_db *db)
+{
+    sv_result currenterr = {};
+    os_clr_console();
+    alert("We'll walk you through the processs of creating a vault.\n\n"
+    "Press Ctrl-C to exit if you no longer want to create a vault.\n\n"
+    "First, create a Amazon Web Services account, if you don't already have one.");
+    os_clr_console();
+    alert("Then, create a IAM account for the Amazon Web Services account.\n\n"
+        "The IAM account will be a 'subaccount' with restricted access, for safety. "
+    "If the IAM account is compromised, the potential damage is more limited.\n\n"
+        "Give the IAM account permissions at least for Glacier-related actions\n\n"
+        "For example, you can use this policy:\n\n"
+        "{\n"
+        "  \"Version\":\"2012-10-17\",\n"
+        "  \"Statement\": [\n"
+        "    {\n"
+        "      \"Effect\": \"Allow\",\n"
+        "      \"Resource\": \"*\",\n"
+        "      \"Action\":[\"glacier:*\"] \n"
+        "    }\n"
+        "  ]\n"
+        "}"
+    );
+    os_clr_console();
+    alert("Log out of AWS, then go to the Amazon Web Services console and "
+    "log in with your new IAM account.\n\n"
+    "Go to https://console.aws.amazon.com/iam/home?#security_credential \n\n"
+    "Write down the 'Access Key ID' and 'Secret Access Key' in a trusted place.");
+    os_clr_console();
+    alert("Go to https://console.aws.amazon.com/glacier \n\n");
+    alert("(Optional: change the 'Region' in the top right, such as us-west-1) \n\n");
+    alert("Click 'Create Vault' and assign a name.\n\n");
+    db;
+    return currenterr;
+}
+
+check_result sv_sync_rawupload(const char *awscli, const char *vaultname, const char *path, const char *description, bstring outarchiveid) {
+    sv_result currenterr = {};
+    const char *args[] = { linuxonly(awscli) "glacier",
+        "upload-archive",
+        "--vault-name",
+        vaultname,
+        "--account-id",
+        "-",
+        "--archive-description",
+        description,
+        "--output",
+        "json",
+        "--body",
+        path, NULL };
+    bstring output = bstring_open();
+    bstring temp = bstring_open();
+    int retcode = -1;
+    check(os_run_process(awscli, args, output, temp, false, NULL, NULL, &retcode));
+    check(roughselectstrfromjson(cstr(output), "archive-id", outarchiveid));
+cleanup:
+    return currenterr;
+}
+
+check_result sv_sync_main(const sv_app *app, const sv_group *grp, svdb_db *db, const char *, const char *vaultname, const char *, const char *)
+{
+    sv_result currenterr = {};
+    ar_manager ar = {};
+    sv_sync_finddirtyfiles finder = {};
+    bstring archiveid = bstring_open();
+
+    uint32_t ignoredcollectionid = 1;
+    uint32_t ignoredarchivesize = 1;
+    check(ar_manager_open(&ar, cstr(app->path_app_data), cstr(grp->grpname), ignoredcollectionid, ignoredarchivesize));
+    const char *rootdir = cstr(ar.path_readytoupload);
+    finder = sv_sync_finddirtyfiles_open(rootdir);
+    finder.db = db;
+
+    /* find dirty files */
+    check(sv_sync_finddirtyfiles_find(&finder));
+    /* sort, smallest files first */
+    bstrlist_sort(finder.sizes_and_files);
+    /* begin upload */
+    check(sv_sync_rawupload("aws", vaultname, blist_view(finder.sizes_and_files, 0), "", archiveid));
+
+cleanup:
+    ar_manager_close(&ar);
+    sv_sync_finddirtyfiles_close(&finder);
+    return currenterr;
+}
+
 check_result sv_sync_cloud(
     const sv_app *app, const sv_group *grp, svdb_db *db)
 {
-    app;
-    grp;
-    db;
-    return OK;
+    sv_result currenterr = {};
+    bstrlist *regions = bstrlist_open();
+    bstrlist *names = bstrlist_open();
+    bstrlist *awsnames = bstrlist_open();
+    bstrlist *arns = bstrlist_open();
+    check(svdb_knownvaults_get(db, regions, names, awsnames, arns));
+    
+    int chosen = menu_choose(
+        "Please choose a Amazon Glacier vault.", names, "Create New", "(Back)", NULL);
+    if (chosen == names->qty)
+    {
+        /* create a new vault */
+        check(sv_sync_newvault(db));
+        /* recurse */
+        check(sv_sync_cloud(app, grp, db));
+    }
+    else if (chosen < names->qty) {
+        check(sv_sync_main(app, grp, db, blist_view(regions, chosen),
+            blist_view(names, chosen), blist_view(awsnames, chosen), blist_view(arns, chosen)));
+    }
+    
+cleanup:
+    bstrlist_close(regions);
+    bstrlist_close(names);
+    bstrlist_close(awsnames);
+    bstrlist_close(arns);
+    return currenterr;
 }
 

@@ -379,6 +379,33 @@ cleanup:
     return currenterr;
 }
 
+check_result sv_basic_crc32_wholefile(
+    const char *file, uint32_t *crc32)
+{
+    sv_result currenterr = {};
+    sv_file f = {};
+    *crc32 = 0;
+    check(sv_file_open(&f, file, "rb"));
+
+    const int CRC_BUFFER_SIZE = 8192;
+    byte *buf = sv_calloc(CRC_BUFFER_SIZE, sizeof(byte));
+
+    /* accumulate crc32 from file */
+    while (true) {
+        size_t amtread = fread(buf, sizeof(byte), CRC_BUFFER_SIZE, f.file);
+        if (amtread == 0) {
+            check_b(!ferror(f.file), "error reading file %s", file);
+            break;
+        }
+
+        *crc32 = Crc32_ComputeBuf(*crc32, buf, cast64u32s(amtread));
+    }
+
+cleanup:
+    sv_file_close(&f);
+    return currenterr;
+}
+
 check_result writevalidmp3(
     const char *path, bool changeid3, bool changeid3length, bool changedata)
 {
