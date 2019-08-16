@@ -18,5 +18,6 @@ GNU General Public License for more details.
 #include "user_config.h"
 
 check_result roughselectstrfromjson(const char *json, const char *key, bstring result);
+bstring localpath_to_cloud_path(const char *rootdir, const char *path);
 
 #endif

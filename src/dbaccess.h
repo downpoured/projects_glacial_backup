@@ -45,6 +45,11 @@ typedef enum svdb_qid
     svdb_qid_contentsiter,
     svdb_qid_contentscount,
     svdb_qid_contents_setlastreferenced,
+    svdb_qid_vault_get,
+    svdb_qid_vault_insert,
+    svdb_qid_vaultarchives_bypath,
+    svdb_qid_vaultarchives_delbypath,
+    svdb_qid_vaultarchives_insert,
     svdb_qid_max,
 } svdb_qid;
 
@@ -198,13 +203,16 @@ check_result svdb_archives_write_checksum(svdb_db *self, uint64_t archiveid,
     const char *filepath);
 
 check_result svdb_knownvaults_get(
-    svdb_db *self, sv_array *ids, bstrlist *regions, bstrlist *names, bstrlist *arns);
+    svdb_db *self, bstrlist *regions, bstrlist *names, bstrlist *awsnames, bstrlist *arns);
 check_result svdb_knownvaults_insert(
-    svdb_db *self, const char *region, const char *name, const char *arn);
+    svdb_db *self, const char *region, const char *name, const char *awsname, const char *arn);
 check_result svdb_vaultarchives_bypath(
     svdb_db *self, const char *path, uint64_t knownvaultid, uint64_t *outsize, uint64_t *outcrc32, uint64_t *outmodtime);
+check_result svdb_vaultarchives_delbypath(
+    svdb_db *self, const char *path, uint64_t knownvaultid);
 check_result svdb_vaultarchives_insert(
-    svdb_db *self, const char *path, uint64_t knownvaultid, const char *awsid, uint64_t outsize, uint64_t outcrc32, uint64_t outmodtime);
+    svdb_db *self, const char *path, uint64_t knownvaultid, const char *awsid, uint64_t size, uint64_t crc32, uint64_t modtime);
+
 
 check_result svdb_txn_open(svdb_txn *self, svdb_db *db);
 check_result svdb_txn_commit(svdb_txn *self, svdb_db *db);

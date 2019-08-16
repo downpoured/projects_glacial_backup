@@ -61,6 +61,96 @@ cleanup:
     return currenterr;
 }
 
+typedef struct sv_sync_finddirtyfiles
+{
+    bstrlist *files;
+    bstrlist *cloudpaths;
+    uint64_t totalsize;
+    svdb_db *db;
+    bstring rootdir;
+    uint64_t knownvaultid;
+    bool verbose;
+} sv_sync_finddirtyfiles;
+
+sv_sync_finddirtyfiles sv_sync_finddirtyfiles_open(const char *rootdir) {
+    sv_sync_finddirtyfiles ret = {};
+    ret.files = bstrlist_open();
+    ret.cloudpaths = bstrlist_open();
+    ret.rootdir = bfromcstr(rootdir);
+    return ret;
+}
+
+void sv_sync_finddirtyfiles_close(sv_sync_finddirtyfiles *self) {
+    if (self) {
+        bstrlist_close(self->files);
+        bstrlist_close(self->cloudpaths);
+        bdestroy(self->rootdir);
+        set_self_zero();
+    }
+}
+
+bstring localpath_to_cloud_path(const char *rootdir, const char *path) {
+    /* let's keep the leaf name of the rootdir */
+    bstring ret = bstring_open();
+    bstring prefix = bstring_open();
+    os_get_parent(rootdir, prefix);
+    check_fatal(!strchr("/\\", rootdir[strlen(rootdir) - 1]), "root should not end with dirsep");
+    if (s_startwith(path, cstr(prefix))) {
+        const char *pathwithoutroot = path + blength(prefix);
+        bsetfmt(ret, "glacial_backup/%s", pathwithoutroot);
+        bstr_replaceall(ret, "\\", "/");
+    }
+
+    bdestroy(prefix);
+    return ret;
+}
+
+check_result sv_sync_finddirtyfiles_isdirty(sv_sync_finddirtyfiles *self,
+    const bstring filepath, uint64_t modtime, uint64_t filesize, const char *cloudpath, bool *isdirty) {
+    sv_result currenterr = {};
+    uint64_t cloud_size = 0, cloud_crc32 = 0, cloud_modtime = 0;
+    check(svdb_vaultarchives_bypath(self->db, cloudpath, self->knownvaultid, &cloud_size, &cloud_crc32, &cloud_modtime));
+    filepath;
+    modtime;
+    filesize;
+    *isdirty = true;
+cleanup:
+    return currenterr;
+}
+
+check_result sv_sync_finddirtyfiles_cb(void *context,
+    const bstring filepath, uint64_t modtime, uint64_t filesize,
+    unused(const bstring)) {
+    sv_result currenterr = {};
+    sv_sync_finddirtyfiles *self = (sv_sync_finddirtyfiles *)context;
+    bstring cloudpath = localpath_to_cloud_path(cstr(self->rootdir), cstr(filepath));
+    bool isdirty = true;
+    check(sv_sync_finddirtyfiles_isdirty(self, filepath, modtime, filesize, cstr(cloudpath), &isdirty));
+    if (isdirty) {
+        bstrlist_appendcstr(self->cloudpaths, cstr(cloudpath));
+        bstrlist_appendcstr(self->files, cstr(filepath));
+        self->totalsize += filesize;
+    }
+
+  cleanup:
+    bdestroy(cloudpath);
+    return currenterr;
+}
+
+
+check_result sv_sync_finddirtyfiles_find(sv_sync_finddirtyfiles *finder) {
+    sv_result currenterr = {};
+    os_recurse_params params = {};
+    params.context = finder;
+    params.root = cstr(finder->rootdir);
+    params.callback = sv_sync_finddirtyfiles_cb;
+    params.max_recursion_depth = 1024;
+    params.messages = bstrlist_open();
+    check(os_recurse(&params));
+cleanup:
+    return currenterr;
+}
+
 check_result sv_sync_cloud(
     const sv_app *app, const sv_group *grp, svdb_db *db)
 {
