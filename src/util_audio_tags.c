@@ -207,7 +207,7 @@ sv_hasher sv_hasher_open(const char *loggingcontext)
     /* for benchmarks on my machines, buffer size of 64k is
     slightly faster than 4k and slightly slower than 256k */
     ret.buflen32u = 64 * 1024;
-    ret.buflen32s = cast32u32s(ret.buflen32u);
+    check_fatal(ret.buflen32u < SHRT_MAX, "must be smaller than 16bit");
     check_fatal(ret.buflen32u % 4096 == 0, "must be multiple of 4096.");
     ret.buf = os_aligned_malloc(ret.buflen32u, 4096);
     ret.loggingcontext = loggingcontext;

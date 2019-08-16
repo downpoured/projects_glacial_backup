@@ -65,6 +65,9 @@ GNU General Public License for more details.
     } while (0)
 
 #else /* _MSC_VER */
+#define WINVER 0x0601 /* win7 */
+#define _WIN32_WINNT 0x0601 /* win7 */
+#define NTDDI_VERSION 0x06010000 /* win7 */
 #include <windows.h>
 #include <direct.h>
 #include <errno.h>
@@ -89,6 +92,9 @@ GNU General Public License for more details.
 
 /* allow goto */
 #pragma warning(disable : 26438)
+
+/* allow enum */
+#pragma warning(disable : 26812)
 
 #define noreturn_start() __pragma(warning(disable : 4702))
 #define noreturn_end() __pragma(warning(default : 4702))

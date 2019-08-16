@@ -21,7 +21,6 @@ typedef struct sv_hasher
 {
     byte *buf;
     uint32_t buflen32u;
-    int32_t buflen32s;
     spooky_state state;
     const char *loggingcontext;
 } sv_hasher;
