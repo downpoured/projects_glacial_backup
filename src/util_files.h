@@ -46,6 +46,7 @@ bool os_file_or_dir_exists(const char *filepath, bool *is_file);
 uint64_t os_getfilesize(const char *s);
 uint64_t os_getmodifiedtime(const char *s);
 bool os_setmodifiedtime_nearestsecond(const char *s, uint64_t t);
+uint64_t os_ostime_to_posixtime(uint64_t t);
 bool os_create_dir(const char *s);
 bool os_create_dirs(const char *s);
 bool os_copy(const char *s1, const char *s2, bool overwrite);

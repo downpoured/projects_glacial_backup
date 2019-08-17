@@ -60,6 +60,12 @@ bool os_setmodifiedtime_nearestsecond(const char *filepath, uint64_t t)
     return ret;
 }
 
+uint64_t os_ostime_to_posixtime(uint64_t t);
+{
+    /* it's already in posix time */
+    return t;
+}
+
 bool os_create_dir(const char *filepath)
 {
     bool is_file = false;
@@ -952,6 +958,9 @@ uint64_t os_getfilesize(const char *s)
 
 uint64_t os_getmodifiedtime(const char *s)
 {
+    /* some benchmarks say GetFileAttributesEx is faster than GetFileTime.
+    OTOH, GetFileAttributesEx doesn't handle Windows FAT systems where time
+    is stored as local and not UTC. */
     sv_wstr ws = sv_wstr_widen(s);
     WIN32_FILE_ATTRIBUTE_DATA data = {0};
     BOOL ret = FALSE;
@@ -990,6 +999,15 @@ bool os_setmodifiedtime_nearestsecond(const char *s, uint64_t t)
     CloseHandleNull(&handle);
     sv_wstr_close(&ws);
     return ret;
+}
+
+uint64_t os_ostime_to_posixtime(uint64_t t);
+{
+    /* https://gist.github.com/Mostafa-Hamdy-Elgiar/
+    9714475f1b3bc224ea063af81566d873 */
+    const uint64_t EPOCH_AS_FILETIME = 116444736000000000ULL;
+    const uint64_t HUNDREDS_OF_NANOSECONDS = 10000000ULL;
+    return (t - EPOCH_AS_FILETIME) / HUNDREDS_OF_NANOSECONDS;
 }
 
 bool os_create_dir(const char *s)

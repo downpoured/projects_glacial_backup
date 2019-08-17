@@ -1,0 +1,18 @@
+{
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "eslint.enable": false,
+    "files.exclude": {
+        "**/Debug": true,
+        "**/doc": true,
+        "**/Release": true,
+        "**/tools*": true,
+        "**/x64": true
+    },
+    "search.exclude": {
+        "*lib_sqlite.c*": true,
+        "*lib_sqlite.h*": true
+    }
+}

@@ -203,7 +203,7 @@ check_result svdb_archives_write_checksum(svdb_db *self, uint64_t archiveid,
     const char *filepath);
 
 check_result svdb_knownvaults_get(
-    svdb_db *self, bstrlist *regions, bstrlist *names, bstrlist *awsnames, bstrlist *arns);
+    svdb_db *self, bstrlist *regions, bstrlist *names, bstrlist *awsnames, bstrlist *arns, sv_array *ids);
 check_result svdb_knownvaults_insert(
     svdb_db *self, const char *region, const char *name, const char *awsname, const char *arn);
 check_result svdb_vaultarchives_bypath(

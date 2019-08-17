@@ -198,6 +198,7 @@ const char *schema_cmds[] = {
     "CREATE TABLE TblKnownVaultArchives ("
     "KnownArchiveId INTEGER PRIMARY KEY AUTOINCREMENT,"
     "KnownVaultsId INTEGER,"
+    "CloudPath TEXT,"---
     "AwsArchiveId TEXT,"
     "AwsDescription TEXT,"
     "AwsCreationDate TEXT,"
@@ -1226,10 +1227,10 @@ void svdb_contents_row_string(const sv_content_row *row, bstring s)
 }
 
 check_result svdb_knownvaults_get(
-    svdb_db *self, bstrlist *regions, bstrlist *names, bstrlist *awsnames, bstrlist *arns)
+    svdb_db *self, bstrlist *regions, bstrlist *names, bstrlist *awsnames, bstrlist *arns, sv_array *ids)
 {
     self->qrystrings[svdb_qid_vault_get] =
-        "SELECT AwsRegion, Name, AwsVaultName, AwsVaultARN "
+        "SELECT KnownVaultsId, AwsRegion, Name, AwsVaultName, AwsVaultARN "
         "FROM TblKnownVaults WHERE TRUE";
 
     sv_result currenterr = {};
@@ -1239,13 +1240,16 @@ check_result svdb_knownvaults_get(
     check(svdb_qry_run(&qry, self, false, &rc));
     while (rc == SQLITE_ROW)
     {
-        svdb_qry_get_str(&qry, self, 1, tmp);
-        bstrlist_append(regions, tmp);
+        uint64_t id = 0;
+        svdb_qry_get_uint64(&qry, self, 1, &id);
+        sv_array_add64u(ids, id);
         svdb_qry_get_str(&qry, self, 2, tmp);
-        bstrlist_append(names, tmp);
+        bstrlist_append(regions, tmp);
         svdb_qry_get_str(&qry, self, 3, tmp);
-        bstrlist_append(awsnames, tmp);
+        bstrlist_append(names, tmp);
         svdb_qry_get_str(&qry, self, 4, tmp);
+        bstrlist_append(awsnames, tmp);
+        svdb_qry_get_str(&qry, self, 5, tmp);
         bstrlist_append(arns, tmp);
         check(svdb_qry_run(&qry, self, false, &rc));
     }
@@ -1309,7 +1313,7 @@ check_result svdb_vaultarchives_delbypath(
     svdb_db *self, const char *path, uint64_t knownvaultid)
 {
     self->qrystrings[svdb_qid_vaultarchives_delbypath] =
-        "DELETE FROM TblArchives WHERE AwsDescription=? AND KnownVaultsId=?";
+        "DELETE FROM TblArchives WHERE CloudPath=? AND KnownVaultsId=?";
 
     sv_result currenterr = {};
     int rc = 0;
@@ -1324,10 +1328,10 @@ cleanup:
 }
 
 check_result svdb_vaultarchives_insert(
-    svdb_db *self, const char *path, uint64_t knownvaultid, const char *awsid, uint64_t size, uint64_t crc32, uint64_t modtime)
+    svdb_db *self, const char *path, const char *description, uint64_t knownvaultid, const char *awsid, uint64_t size, uint64_t crc32, uint64_t modtime)
 {
     self->qrystrings[svdb_qid_vaultarchives_insert] =
-        "INSERT INTO TblArchives (KnownVaultsId, AwsArchiveId, AwsDescription, Size, Crc32, ModifiedTime) VALUES (?, ?, ?, ?, ?, ?)";
+        "INSERT INTO TblArchives (KnownVaultsId, AwsArchiveId, CloudPath, AwsDescription, Size, Crc32, ModifiedTime) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
     sv_result currenterr = {};
     int rc = 0;
@@ -1335,9 +1339,10 @@ check_result svdb_vaultarchives_insert(
     check(svdb_qry_bind_uint64(&qry, self, 1, knownvaultid));
     check(svdb_qry_bindstr(&qry, self, 2, awsid, strlen32s(awsid), false));
     check(svdb_qry_bindstr(&qry, self, 3, path, strlen32s(path), false));
-    check(svdb_qry_bind_uint64(&qry, self, 4, size));
-    check(svdb_qry_bind_uint64(&qry, self, 5, crc32));
-    check(svdb_qry_bind_uint64(&qry, self, 6, modtime));
+    check(svdb_qry_bindstr(&qry, self, 4, description, strlen32s(description), false));
+    check(svdb_qry_bind_uint64(&qry, self, 5, size));
+    check(svdb_qry_bind_uint64(&qry, self, 6, crc32));
+    check(svdb_qry_bind_uint64(&qry, self, 7, modtime));
     check(svdb_qry_run(&qry, self, true, &rc));
     check(svdb_qry_disconnect(&qry, self));
 cleanup:

@@ -17,18 +17,18 @@ GNU General Public License for more details.
 
 SV_BEGIN_TEST_SUITE(tests_sync_cloud_standalone)
 {
-    const char *jsonsinglequote = "{\n" \
-        "    'VaultList': [\n" \
+    const char *jsonsinglequote = "{\n" 
+        "    'VaultList': [\n" 
         "        {\n" \
-        "            'VaultARN': 'arn:aws:glacier:us-east-1:123456789:vaults/the_vault_name',\n" \
-        "            'VaultName': 'the vault name',\n" \
-        "            'CreationDate': '2016-08-27T11:12:13.111Z',\n" \
-        "            'Duplicate': 'abc',\n" \
-        "            'Duplicate': 'def',\n" \
-        "            'NumberOfArchives': 0,\n" \
-        "            'NoClosing': 'noclose\n" \
-        "        }\n" \
-        "    ]\n" \
+        "            'VaultARN': 'arn:aws:glacier:us-east-1:123456789:vaults/the_vault_name',\n" 
+        "            'VaultName': 'the vault name',\n" 
+        "            'CreationDate': '2016-08-27T11:12:13.111Z',\n" 
+        "            'Duplicate': 'abc',\n" 
+        "            'Duplicate': 'def',\n" 
+        "            'NumberOfArchives': 0,\n" 
+        "            'NoClosing': 'noclose\n" 
+        "        }\n" 
+        "    ]\n" 
         "}\n";
     TEST_OPEN_EX(bstring, result, bfromcstr(""));
     TEST_OPEN_EX(bstring, json, bfromcstr(jsonsinglequote));
@@ -98,19 +98,48 @@ check_result test_sync_cloud_db_vaults(
     check(svdb_knownvaults_insert(db, "reg3", "nm3", "awsname3", "arn3"));
 
     /* query them */
-    TEST_OPEN_EX(bstrlist *, regions, bstrlist_open());
-    TEST_OPEN_EX(bstrlist *, names, bstrlist_open());
-    TEST_OPEN_EX(bstrlist *, awsnames, bstrlist_open());
-    TEST_OPEN_EX(bstrlist *, arns, bstrlist_open());
-    check(svdb_knownvaults_get(db, regions, names, awsnames, arns));
-    TEST_OPEN_EX(bstring, allregions, bjoin_static(regions, "|"));
-    TEST_OPEN_EX(bstring, allnames, bjoin_static(names, "|"));
-    TEST_OPEN_EX(bstring, allawsnames, bjoin_static(awsnames, "|"));
-    TEST_OPEN_EX(bstring, allarns, bjoin_static(arns, "|"));
-    TestEqs("reg1|reg2|reg3", cstr(allregions));
-    TestEqs("nm1|nm2|nm3", cstr(allnames));
-    TestEqs("awsname1|awsname2|awsname3", cstr(allawsnames));
-    TestEqs("arn1|arn2|arn3", cstr(allarns));
+    {
+        TEST_OPEN_EX(bstrlist *, regions, bstrlist_open());
+        TEST_OPEN_EX(bstrlist *, names, bstrlist_open());
+        TEST_OPEN_EX(bstrlist *, awsnames, bstrlist_open());
+        TEST_OPEN_EX(bstrlist *, arns, bstrlist_open());
+        TEST_OPEN_EX(sv_array, ids, sv_array_open_u64());
+        check(svdb_knownvaults_get(db, regions, names, awsnames, arns, &ids));
+        TEST_OPEN_EX(bstring, allregions, bjoin_static(regions, "|"));
+        TEST_OPEN_EX(bstring, allnames, bjoin_static(names, "|"));
+        TEST_OPEN_EX(bstring, allawsnames, bjoin_static(awsnames, "|"));
+        TEST_OPEN_EX(bstring, allarns, bjoin_static(arns, "|"));
+        TestEqs("reg1|reg2|reg3", cstr(allregions));
+        TestEqs("nm1|nm2|nm3", cstr(allnames));
+        TestEqs("awsname1|awsname2|awsname3", cstr(allawsnames));
+        TestEqs("arn1|arn2|arn3", cstr(allarns));
+        TestEqn(0, sv_array_at64u(&ids, 0));
+        TestEqn(1, sv_array_at64u(&ids, 1));
+        TestEqn(2, sv_array_at64u(&ids, 2));
+        TestEqn(3, ids.length);
+    }
+
+    /* delete one and make sure ids are still correct */
+    check(svdb_runsql(db, s_and_len("DELETE FROM TblKnownVaults WHERE name=reg2")));
+    {
+        TEST_OPEN_EX(bstrlist *, regions, bstrlist_open());
+        TEST_OPEN_EX(bstrlist *, names, bstrlist_open());
+        TEST_OPEN_EX(bstrlist *, awsnames, bstrlist_open());
+        TEST_OPEN_EX(bstrlist *, arns, bstrlist_open());
+        TEST_OPEN_EX(sv_array, ids, sv_array_open_u64());
+        check(svdb_knownvaults_get(db, regions, names, awsnames, arns, &ids));
+        TEST_OPEN_EX(bstring, allregions, bjoin_static(regions, "|"));
+        TEST_OPEN_EX(bstring, allnames, bjoin_static(names, "|"));
+        TEST_OPEN_EX(bstring, allawsnames, bjoin_static(awsnames, "|"));
+        TEST_OPEN_EX(bstring, allarns, bjoin_static(arns, "|"));
+        TestEqs("reg1|reg3", cstr(allregions));
+        TestEqs("nm1|nm3", cstr(allnames));
+        TestEqs("awsname1|awsname3", cstr(allawsnames));
+        TestEqs("arn1|arn3", cstr(allarns));
+        TestEqn(0, sv_array_at64u(&ids, 0));
+        TestEqn(2, sv_array_at64u(&ids, 1));
+        TestEqn(2, ids.length);
+    }
 cleanup:
     return currenterr;
 }

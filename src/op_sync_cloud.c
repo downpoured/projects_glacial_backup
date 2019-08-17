@@ -39,6 +39,7 @@ and linux installation is much simpler.
 */
 
 #include "op_sync_cloud.h"
+#include <time.h>
 
 check_result roughselectstrfromjson(const char *json, const char *key, bstring result) {
     sv_result currenterr = {};
@@ -75,6 +76,7 @@ sv_sync_finddirtyfiles sv_sync_finddirtyfiles_open(const char *rootdir) {
     sv_sync_finddirtyfiles ret = {};
     ret.sizes_and_files = bstrlist_open();
     ret.rootdir = bfromcstr(rootdir);
+    ret.verbose = true;
     return ret;
 }
 
@@ -99,6 +101,43 @@ bstring localpath_to_cloud_path(const char *rootdir, const char *path) {
     }
 
     bdestroy(prefix);
+    return ret;
+}
+
+bstring ostime_to_str_or_fallback(uint64_t ostime, const char *fallback) {
+    /* use FastGlacier's format. */
+    /* on Windows FAT systems this isn't utc, but that's not too common. */
+    uint64_t posixtime = os_ostime_to_posixtime(ostime);
+    struct tm timestruct = {};
+#ifdef _WIN32
+    errno_t err = _gmtime64_s(&timestruct, posixtime);
+    bool success = err == 0;
+#else
+    struct tm *ret = gmtime_r(&posixtime, &timestruct);
+    bool success = ret != NULL;
+#endif
+  if (success) {
+      const char buf[BUFSIZ] = {0};
+    strftime(buf, countof(buf) - 1, "%Y%m%dT%H%M%SZ", &timestruct);
+    return bfromcstr(buf);
+  } else {
+      return bfromcstr(fallback);
+  }
+}
+
+bstring cloud_path_to_description(const char *cloudpath, const char *filename) {
+    uint64_t ostime = os_getmodifiedtime(filename);
+    bstring tm = ostime_to_str_or_fallback(ostime, "19010101T010101Z");
+    bstring cpath = bfromcstr(cloudpath);
+    bstring cpathbase64 = bBase64Encode(cpath);
+    if (!cpathbase64) {
+        cpathbase64 = bfromcstr("");
+    }
+    
+    bstring ret = bformat("<m><v>4</v><p>%s</p><lm>%s</lm></m>", cstr(cpathbase64), cstr(tm));
+    bdestroy(tm);
+    bdestroy(cpath);
+    bdestroy(cpathbase64);
     return ret;
 }
 
@@ -145,6 +184,7 @@ check_result sv_sync_finddirtyfiles_cb(void *context,
     bstring sizeandfile = bstring_open();
     sv_sync_finddirtyfiles *self = (sv_sync_finddirtyfiles *)context;
     bstring cloudpath = localpath_to_cloud_path(cstr(self->rootdir), cstr(filepath));
+    check_b(blength(cloudpath), "could not make cloudpath %s, %s", cstr(self->rootdir), cstr(filepath));
     bool isdirty = true;
     check(sv_sync_finddirtyfiles_isdirty(self, filepath, modtime, filesize, cstr(cloudpath), &isdirty));
     if (isdirty) {
@@ -179,17 +219,175 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_sync_newvault(svdb_db *db)
-{
+bool sv_sync_askcreds(const char *region) {
+    bstring keyid = bstring_open();
+    bstring key = bstring_open();
+    bool ret = false;
+    os_clr_console();
+    ask_user_str("Please type in the 'aws access key id':", true, keyid);
+    if (!blength(keyid)) {
+       goto cleanup;
+    }
+    os_clr_console();
+    ask_user_str("Please type in the 'aws secret access key':", true, key);
+    if (!blength(key)) {
+       goto cleanup;
+    }
+
+    os_set_env("AWS_DEFAULT_REGION", region);
+    os_set_env("AWS_ACCESS_KEY_ID", cstr(keyid));
+    os_set_env("AWS_SECRET_ACCESS_KEY", cstr(key));
+    ret = true;
+cleanup:
+    bdestroy(keyid);
+    bdestroy(key);
+    return ret;
+}
+
+check_result sv_sync_findawscli(bstring out) {
+    sv_result currenterr = {};
+    check(os_binarypath(islinux ? "aws" : "aws.exe", out));
+    if (os_file_exists(cstr(out))) {
+        goto cleanup;
+    }
+
+    bassigncstr(out, "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe");
+    if (os_file_exists(cstr(out))) {
+        goto cleanup;
+    }
+
+    bassigncstr(out, "C:\\Program Files (x86)\\Amazon\\AWSCLIV2\\aws.exe");
+    if (os_file_exists(cstr(out))) {
+        goto cleanup;
+    }
+
+    bstrclear(out);
+cleanup:
+    return currenterr;
+}
+
+check_result sv_sync_findcheckawscli(bstring awscli) {
+    sv_result currenterr = {};
+    check(sv_sync_findawscli(awscli));
+    bstring output = bstring_open();
+    bstring temp = bstring_open();
+    if (!blength(awscli)) {
+        os_clr_console();
+        printf("We could not find the aws cli.\n\n");
+        if (islinux) {
+            alert("Please install it with a command like 'sudo apt-get install awscli'.\n\n");
+        } else {
+            alert("Please install it (version 2 or later) from Amazon's website at https://aws.amazon.com/cli/.\n\n");            
+        }
+    } else {
+        const char *args[] = { linuxonly(awscli) "--version",
+        NULL };
+        int retcode = -1;
+        check(os_run_process(ctr(awscli), args, output, temp, false, NULL, NULL, &retcode));
+        bltrimws(output);
+        if (!s_startwith(cstr(output), "aws-cli/2") && !s_startwith(cstr(output), "aws-cli/3") && !s_startwith(cstr(output), "aws-cli/4")) {
+            bstrclear(awscli);
+            printf("We expected 'aws --version' to print a version like 'aws-cli/2.0.34' but got '%s'. Old version or broken install?\n\n", cstr(output));
+            if (islinux) {
+                alert("Please install awscli with a command like 'sudo apt-get install awscli'.\n\n");
+            } else {
+                alert("Please install awscli (version 2 or later) from Amazon's website at https://aws.amazon.com/cli/.\n\n");            
+            }
+        }
+    }
+cleanup:
+    bdestroy(output);
+    bdestroy(temp);
+    return currenterr;
+}
+
+check_result sv_sync_newvault(svdb_db *db, const char *awscli) {
     sv_result currenterr = {};
     os_clr_console();
+    bstring region = bstring_open();
+    bstring output = bstring_open();
+    bstring temp = bstring_open();
+    bstring vaultname = bstring_open();
+    bstring awsvaultname = bstring_open();
+    bstring awsvaultarn = bstring_open();
+    int retcode = -1;
+    
+    do {
+        os_clr_console();
+        printf("You're now ready to connect to the vault.\n\n"
+        "Files we store here will be visible by tools like FastGlacier. "
+        "Or, you can use awscli to initiate a download, we write the file's name in base64 in the archive's 'description'.\n\n");
+        
+        ask_user_str("Please type in the name of the vault, or 'q' to cancel:", true, vaultname);
+        if (!blength(vaultname)) {
+           goto cleanup;
+        }
+
+        printf("We'll now see if we can connect to the vault.\n\n");
+        ask_user_str("Please type in the region (e.g. 'us-west-1'):", true, region);
+        if (!blength(region)) {
+          goto cleanup;
+        }
+        
+        if (!sv_sync_askcreds(cstr(region))) {
+          goto cleanup;
+        }
+
+        const char *args[] = { linuxonly(awscli) "glacier",
+            "describe-vault",
+            "--vault-name",
+            vaultname,
+            "--account-id",
+            "-",
+            "--output",
+            "json",
+            NULL };
+    
+        sv_result ret = os_run_process(awscli, args, output, temp, false, NULL, NULL, &retcode);
+        if (ret.code || retcode != 0) {
+            printf("awscli describe-vault failed with: %s\nexit code=%d", cstr(output), retcode);
+            retcode = -1;
+            if (ask_user("Try again? y/n"))
+            {
+                continue;
+            }
+        }
+        
+    } while (false);
+
+    if (retcode == 0) {
+        check(roughselectstrfromjson(cstr(output), "VaultName", awsvaultname));
+        check(roughselectstrfromjson(cstr(output), "VaultARN", awsvaultarn));
+        check(svdb_knownvaults_insert(db, cstr(region), cstr(vaultname), cstr(awsvaultname), cstr(awsvaultarn)));
+        printf("Successfully connected to %s\n", cstr(awsvaultarn));
+        alert("");
+    }
+cleanup:
+    bdestroy(region);
+    bdestroy(output);
+    bdestroy(temp);
+    bdestroy(vaultname);
+    bdestroy(awsvaultname);
+    bdestroy(awsvaultarn);
+    return currenterr;
+}
+
+check_result sv_sync_newvault_intro(svdb_db *db)
+{
+    sv_result currenterr = {};
+    bstring awscli = bstring_open();
+    check(sv_sync_findcheckawscli(awscli));
+    if (!blength(awscli)) {
+        goto cleanup;
+    }
+
     alert("We'll walk you through the processs of creating a vault.\n\n"
     "Press Ctrl-C to exit if you no longer want to create a vault.\n\n"
     "First, create a Amazon Web Services account, if you don't already have one.");
     os_clr_console();
     alert("Then, create a IAM account for the Amazon Web Services account.\n\n"
         "The IAM account will be a 'subaccount' with restricted access, for safety. "
-    "If the IAM account is compromised, the potential damage is more limited.\n\n"
+    "(If the IAM account is compromised, the potential damage is more limited).\n\n"
         "Give the IAM account permissions at least for Glacier-related actions\n\n"
         "For example, you can use this policy:\n\n"
         "{\n"
@@ -209,10 +407,16 @@ check_result sv_sync_newvault(svdb_db *db)
     "Go to https://console.aws.amazon.com/iam/home?#security_credential \n\n"
     "Write down the 'Access Key ID' and 'Secret Access Key' in a trusted place.");
     os_clr_console();
-    alert("Go to https://console.aws.amazon.com/glacier \n\n");
-    alert("(Optional: change the 'Region' in the top right, such as us-west-1) \n\n");
-    alert("Click 'Create Vault' and assign a name.\n\n");
-    db;
+    alert("Go to https://console.aws.amazon.com/glacier \n\n"
+    "Notice the 'Region' in the top right (e.g. us-west-1) and write it down, "
+    "or optionally change it.\n\n"
+    "1) Click 'Create Vault'.\n\n"
+    "2) Enter a vault name.\n\n"
+    "3) Click Next through each page, you don't need to set up notifications, and click Create Vault.\n\n");
+    check(sv_sync_newvault(db, cstr(awscli)));
+    
+cleanup:
+    bdestroy(awscli);
     return currenterr;
 }
 
@@ -234,35 +438,110 @@ check_result sv_sync_rawupload(const char *awscli, const char *vaultname, const 
     bstring temp = bstring_open();
     int retcode = -1;
     check(os_run_process(awscli, args, output, temp, false, NULL, NULL, &retcode));
+    check_b(retcode == 0, "failed with retcode=%d, %s\n", retcode, cstr(output));
     check(roughselectstrfromjson(cstr(output), "archive-id", outarchiveid));
+    check_b(blength(outarchiveid), "archive-id shouldn't be empty");
 cleanup:
     return currenterr;
 }
 
-check_result sv_sync_main(const sv_app *app, const sv_group *grp, svdb_db *db, const char *, const char *vaultname, const char *, const char *)
+check_result sv_sync_uploadone(svdb_db *db, const char *awscli, int i, int total, const char *root, const char *sizeandfile, const char *vault, uint64_t knownvaultid)
+{
+    sv_result currenterr = {};
+    bstring cloudpath = NULL;
+    bstring description = NULL;
+    bstring archiveid = bstring_open();
+    const char *filepart = strchr(sizeandfile, '|');
+    check_b(filepart, "did not contain | ? %s", sizeandfile);
+    filepart += 1;
+    if (os_file_exists(filepart)) {
+        cloudpath = localpath_to_cloud_path(root, filepart);
+        check_b(blength(cloudpath), "could not make cloudpath %s, %s", root, filepart);
+        description = cloud_path_to_description(cstr(cloudpath), filepart);
+        uint64_t sz = os_getfilesize(filepart);
+        bool succeeded = false;
+        do {
+            printf("Uploading file %d/%d, size=%f Mb\n...This may take some time...\n", i, total, sz/(1024.0*1024.0));
+            sv_result err = sv_sync_rawupload(awscli, vault, filepart, cstr(description), archiveid);
+            if (err.code) {
+                printf("Message: %s", blength(err.msg) ? cstr(err.msg) : "");
+                if (ask_user("Try again? y/n"))
+                {
+                    continue;
+                }
+            } else {
+                succeeded = true;
+            }
+        } while (false);
+
+        if (succeeded) {
+            /* compute the crc32. */
+            uint32_t intcrc = 0;
+            check(sv_basic_crc32_wholefile(filepart, &intcrc));
+            uint64_t modtime = os_getmodifiedtime(filepart);
+
+            /* overwrite any existing files with that path. */
+            check(svdb_vaultarchives_delbypath(db, cstr(cloudpath), knownvaultid));
+            check(svdb_vaultarchives_insert(db, cstr(cloudpath), knownvaultid, cstr(archiveid), sz, intcrc, modtime));
+        }
+    } else {
+        printf("Note: file not found %s\n", filepart);
+        alert("");
+    }
+
+    alert("Sync complete.");
+cleanup:
+    bdestroy(cloudpath);
+    bdestroy(description);
+    bdestroy(archiveid);
+    return currenterr;
+}
+
+
+check_result sv_sync_main(const sv_app *app, const sv_group *grp, svdb_db *db, const char *region, const char *vault, uint64_t knownvaultid)
 {
     sv_result currenterr = {};
     ar_manager ar = {};
     sv_sync_finddirtyfiles finder = {};
-    bstring archiveid = bstring_open();
+    bstring awscli = bstring_open();
+    check(sv_sync_findcheckawscli(awscli));
+    if (!blength(awscli)) {
+        goto cleanup;
+    }
 
+    /* enter credentials */
+    if (!sv_sync_askcreds(region)) {
+        goto cleanup;
+    }
+
+    /* get the ready-to-upload dir */
     uint32_t ignoredcollectionid = 1;
     uint32_t ignoredarchivesize = 1;
     check(ar_manager_open(&ar, cstr(app->path_app_data), cstr(grp->grpname), ignoredcollectionid, ignoredarchivesize));
     const char *rootdir = cstr(ar.path_readytoupload);
-    finder = sv_sync_finddirtyfiles_open(rootdir);
-    finder.db = db;
 
     /* find dirty files */
+    finder = sv_sync_finddirtyfiles_open(rootdir);
+    finder.db = db;
+    finder.knownvaultid = knownvaultid;
     check(sv_sync_finddirtyfiles_find(&finder));
-    /* sort, smallest files first */
+
+    /* sort -- smallest files first */
     bstrlist_sort(finder.sizes_and_files);
-    /* begin upload */
-    check(sv_sync_rawupload("aws", vaultname, blist_view(finder.sizes_and_files, 0), "", archiveid));
+    os_clr_console();
+    printf("%d file(s) are already on the cloud (%f Mb)\n\n", finder.countclean, finder.totalsizeclean / (1024.0 * 1024.0));
+    printf("%d file(s) need to be uploaded (%f Mb)\n\n", finder.sizes_and_files->qty, finder.totalsizedirty / (1024.0 * 1024.0));
+    if (ask_user("Upload the files now?")) {
+        for (int i=0; i<finder.sizes_and_files->qty; i++) {
+            check(sv_sync_uploadone(db, cstr(awscli), i, finder.sizes_and_files->qty, finder.rootdir,
+                blist_view(finder.sizes_and_files, i), vault, knownvaultid));
+        }
+    }
 
 cleanup:
     ar_manager_close(&ar);
     sv_sync_finddirtyfiles_close(&finder);
+    bdestroy(awscli);
     return currenterr;
 }
 
@@ -274,20 +553,21 @@ check_result sv_sync_cloud(
     bstrlist *names = bstrlist_open();
     bstrlist *awsnames = bstrlist_open();
     bstrlist *arns = bstrlist_open();
-    check(svdb_knownvaults_get(db, regions, names, awsnames, arns));
+    sv_array ids = sv_array_open_u64();
+    check(svdb_knownvaults_get(db, regions, names, awsnames, arns, &ids));
     
     int chosen = menu_choose(
         "Please choose a Amazon Glacier vault.", names, "Create New", "(Back)", NULL);
     if (chosen == names->qty)
     {
         /* create a new vault */
-        check(sv_sync_newvault(db));
+        check(sv_sync_newvault_intro(db));
         /* recurse */
         check(sv_sync_cloud(app, grp, db));
     }
     else if (chosen < names->qty) {
         check(sv_sync_main(app, grp, db, blist_view(regions, chosen),
-            blist_view(names, chosen), blist_view(awsnames, chosen), blist_view(arns, chosen)));
+            blist_view(awsnames, chosen), sv_array_at64u(&ids, chosen)));
     }
     
 cleanup:
