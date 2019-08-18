@@ -53,6 +53,13 @@ typedef enum svdb_qid
     svdb_qid_max,
 } svdb_qid;
 
+typedef enum svdb_expectchanges
+{
+    expectchanges = 1,
+    expectnochanges = 2,
+    expectchangesunknown = 3,
+} svdb_expectchanges;
+
 typedef struct svdb_db
 {
     bstring path;
@@ -211,7 +218,7 @@ check_result svdb_vaultarchives_bypath(
 check_result svdb_vaultarchives_delbypath(
     svdb_db *self, const char *path, uint64_t knownvaultid);
 check_result svdb_vaultarchives_insert(
-    svdb_db *self, const char *path, uint64_t knownvaultid, const char *awsid, uint64_t size, uint64_t crc32, uint64_t modtime);
+    svdb_db *self, const char *path, const char *desc, uint64_t knownvaultid, const char *awsid, uint64_t size, uint64_t crc32, uint64_t modtime);
 
 
 check_result svdb_txn_open(svdb_txn *self, svdb_db *db);

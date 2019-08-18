@@ -23,7 +23,7 @@ check_result test_operations_restore(
 check_result test_operations_compact(
     const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
 check_result test_operations_sync_cloud(
-    const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
+    svdb_db *db, sv_test_hook *hook);
 
 SV_BEGIN_TEST_SUITE(whole_tests_operations)
 {
@@ -66,7 +66,7 @@ SV_BEGIN_TEST_SUITE(whole_tests_operations)
         check(test_operations_backup(&app, &grp, &db, &hook));
         check(test_operations_restore(&app, &grp, &db, &hook));
         check(test_operations_compact(&app, &grp, &db, &hook));
-        check(test_operations_sync_cloud(&app, &grp, &db, &hook));
+        check(test_operations_sync_cloud(&db, &hook));
     }
 
     /* cleanup */
@@ -99,7 +99,6 @@ check_result sv_restore_cb(void *context, const sv_file_row *in_files_row,
     const bstring path, const bstring permissions);
 check_result sv_compact_getcutoff(svdb_db *db, const sv_group *grp,
     uint64_t *collectionid_to_expire, time_t now);
-check_result svdb_runsql(svdb_db *self, const char *sql, int lensql);
 
 void setfileaccessiblity(sv_test_hook *hook, int number, bool isaccessible)
 {
@@ -535,7 +534,7 @@ check_result test_operations_compact(
     check(sv_verify_archives(app, grp, db, &mismatches));
     check(svdb_runsql(db,
         s_and_len("UPDATE TblContentsList SET "
-                  "CompressedContentLength = ContentLength WHERE 1")));
+                  "CompressedContentLength = ContentLength WHERE 1"), expectchanges));
     TestEqn(0, mismatches);
     os_clr_console();
 

@@ -13,6 +13,9 @@
 
 #if defined (_MSC_VER)
 # define _CRT_SECURE_NO_WARNINGS
+#pragma warning(disable : 26451)
+#pragma warning(disable : 6386)
+#pragma warning(disable : 6011)
 #else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-conversion"

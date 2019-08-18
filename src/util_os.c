@@ -315,6 +315,13 @@ bool os_dir_exists_basic(const char *filepath)
 void os_get_filename(const char *fullpath, bstring filename)
 {
     const char *last_slash = strrchr(fullpath, pathsep[0]);
+    if (!islinux) {
+        const char *last_fslash = strrchr(fullpath, '/');
+        if (last_fslash && last_fslash > last_slash) {
+            last_slash = last_fslash;
+        }
+    }
+
     if (last_slash)
     {
         bassigncstr(filename, last_slash + 1);
@@ -329,6 +336,13 @@ void os_get_filename(const char *fullpath, bstring filename)
 void os_get_parent(const char *fullpath, bstring dir)
 {
     const char *last_slash = strrchr(fullpath, pathsep[0]);
+    if (!islinux) {
+        const char *last_fslash = strrchr(fullpath, '/');
+        if (last_fslash && last_fslash > last_slash) {
+            last_slash = last_fslash;
+        }
+    }
+
     if (last_slash)
     {
         bassignblk(dir, fullpath, cast64s32s(last_slash - fullpath));

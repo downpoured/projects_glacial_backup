@@ -119,7 +119,7 @@ void svdb_qry_get_str(svdb_qry *self, svdb_db *db, int col, bstring s)
 }
 
 check_result svdb_qry_run(
-    svdb_qry *self, svdb_db *db, bool confirm_changes, int *prc)
+    svdb_qry *self, svdb_db *db, svdb_expectchanges confirm_changes, int *prc)
 {
     sv_result currenterr = {};
     int rc = sqlite3_step(db->qrys[self->qry_number]);
@@ -129,8 +129,11 @@ check_result svdb_qry_run(
     }
 
     check_sql(db->db, rc);
-    check_b(!confirm_changes || sqlite3_changes(db->db) > 0,
-        "running qid %s changed no rows", db->qrystrings[self->qry_number]);
+    if (confirm_changes != expectchangesunknown) {
+        /* note that sqlite3_changes is untouched for all but insert, delete, update */
+        check_b((confirm_changes == expectchanges) == (sqlite3_changes(db->db) > 0),
+            "running qid %s changed/didn't change rows", db->qrystrings[self->qry_number]);
+    }
 
 cleanup:
     return currenterr;
@@ -198,14 +201,14 @@ const char *schema_cmds[] = {
     "CREATE TABLE TblKnownVaultArchives ("
     "KnownArchiveId INTEGER PRIMARY KEY AUTOINCREMENT,"
     "KnownVaultsId INTEGER,"
-    "CloudPath TEXT,"---
+    "CloudPath TEXT,"
     "AwsArchiveId TEXT,"
     "AwsDescription TEXT,"
     "AwsCreationDate TEXT,"
     "Size INTEGER,"
     "Crc32 INTEGER,"
     "ModifiedTime INTEGER, "
-    "UNIQUE(AwsDescription, KnownVaultsId))",
+    "UNIQUE(CloudPath, KnownVaultsId))",
     "CREATE TABLE TblProperties ("
     "PropertyName TEXT PRIMARY KEY,"
     "PropertyVal)",
@@ -228,7 +231,7 @@ const char *schema_cmds[] = {
     "CREATE INDEX IxTblContentsListHash "
     "ON TblContentsList(ContentsHash1)",
     "CREATE INDEX IxTblKnownVaultArchivesDescription "
-    "ON TblKnownVaultArchives(AwsDescription)",
+    "ON TblKnownVaultArchives(CloudPath)",
 
     /* AUTOINCREMENT means that ids are not re-used. We'll enable it
     even though it isn't required by our logic, for better diagnostics.
@@ -236,17 +239,21 @@ const char *schema_cmds[] = {
     In benchmarks, int64[4] is better than blob[32] for 256 bit data. */
 };
 
-check_result svdb_runsql(svdb_db *self, const char *sql, int len)
+check_result svdb_runsql(svdb_db *self, const char *sql, int len, svdb_expectchanges confirm_changes)
 {
     sv_result currenterr = {};
     sv_log_write(sql);
     sqlite3_stmt *stmt = NULL;
     check_b(self->db, "no db connection?");
     check_sql(self->db, sqlite3_prepare_v2(self->db, sql, len, &stmt, NULL));
-
     check_sql(self->db, sqlite3_step(stmt));
     check_sql(self->db, sqlite3_finalize(stmt));
     stmt = NULL;
+    if (confirm_changes != expectchangesunknown) {
+        /* note that sqlite3_changes is untouched for all but insert, delete, update */
+        check_b((confirm_changes == expectchanges) == (sqlite3_changes(self->db) > 0),
+            "running qid %s changed/didn't change rows", sql);
+    }
 
 cleanup:
     sqlite3_finalize(stmt);
@@ -260,7 +267,7 @@ check_result svdb_addschema(svdb_db *self)
     check(svdb_txn_open(&txn, self));
     for (int i = 0; i < countof32s(schema_cmds); i++)
     {
-        check(svdb_runsql(self, schema_cmds[i], strlen32s(schema_cmds[i])));
+        check(svdb_runsql(self, schema_cmds[i], strlen32s(schema_cmds[i]), expectchangesunknown));
     }
 
     check(svdb_txn_commit(&txn, self));
@@ -275,7 +282,7 @@ check_result svdb_getcounthelper(svdb_db *self, svdb_qid qid, uint64_t *ret)
     sv_result currenterr = {};
     svdb_qry qry = svdb_qry_open(qid, self);
     int rc = 0;
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     check_b(rc == SQLITE_ROW, "expect row found, got %d", rc);
     svdb_qry_get_uint64(&qry, self, 1, ret);
     check(svdb_qry_disconnect(&qry, self));
@@ -314,7 +321,7 @@ check_result svdb_getint(
     int rc = 0;
     svdb_qry qry = svdb_qry_open(svdb_qid_propget, self);
     check(svdb_qry_bindstr(&qry, self, 1, propname, lenpropname, true));
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     *val = 0; /* if row is not found, return 0. */
     if (rc == SQLITE_ROW)
     {
@@ -335,7 +342,7 @@ check_result svdb_getstr(
     int rc = 0;
     svdb_qry qry = svdb_qry_open(svdb_qid_propget, self);
     check(svdb_qry_bindstr(&qry, self, 1, propname, lenpropname, true));
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     if (rc == SQLITE_ROW)
     {
         svdb_qry_get_str(&qry, self, 1, val);
@@ -381,7 +388,7 @@ check_result svdb_setstr(
     svdb_qry qry = svdb_qry_open(svdb_qid_propset, self);
     check(svdb_qry_bindstr(&qry, self, 1, propname, lenpropname, true));
     check(svdb_qry_bindstr(&qry, self, 2, val, -1, true));
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, NULL));
     check(svdb_qry_disconnect(&qry, self));
 
 cleanup:
@@ -400,7 +407,7 @@ check_result svdb_setint(
     svdb_qry qry = svdb_qry_open(svdb_qid_propset, self);
     check(svdb_qry_bindstr(&qry, self, 1, propname, lenpropname, true));
     check(svdb_qry_bind_uint(&qry, self, 2, val));
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, NULL));
     check(svdb_qry_disconnect(&qry, self));
 
 cleanup:
@@ -447,7 +454,7 @@ check_result svdb_archives_write_checksum(svdb_db *self, uint64_t archiveid,
     check(svdb_qry_bind_uint64(&qry, self, 2, timemodified));
     check(svdb_qry_bind_uint64(&qry, self, 3, compaction_cutoff));
     check(svdb_qry_bindstr(&qry, self, 4, cstr(s), blength(s), false));
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchanges, NULL));
     check(svdb_qry_disconnect(&qry, self));
 
 cleanup:
@@ -469,7 +476,7 @@ check_result svdb_archives_get_checksums(
     bstring s = bstring_open();
     bstrlist *temp = bstrlist_open();
     int rc = 0;
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     while (rc == SQLITE_ROW)
     {
         svdb_qry_get_str(&qry, self, 1, s);
@@ -479,7 +486,7 @@ check_result svdb_archives_get_checksums(
 
         bstrlist_append(filenames, temp->entry[0]);
         bstrlist_append(checksums, temp->entry[1]);
-        check(svdb_qry_run(&qry, self, false, &rc));
+        check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     }
 
     check(svdb_qry_disconnect(&qry, self));
@@ -502,7 +509,7 @@ check_result svdb_filesbypath(
     int rc = 0;
     svdb_qry qry = svdb_qry_open(svdb_qid_filesbypath, self);
     check(svdb_qry_bindstr(&qry, self, 1, cstr(path), blength(path), false));
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     if (rc == SQLITE_ROW)
     {
         uint64_t status = 0;
@@ -532,7 +539,7 @@ check_result svdb_collectionsget(svdb_db *self, sv_array *rows, bool get_all)
     sv_result currenterr = {};
     svdb_qry qry = svdb_qry_open(svdb_qid_collectionget, self);
     int rc = 0;
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     check_b(rows->elementsize == sizeof32u(sv_collection_row), "");
     while (rc == SQLITE_ROW)
     {
@@ -549,7 +556,7 @@ check_result svdb_collectionsget(svdb_db *self, sv_array *rows, bool get_all)
             break;
         }
 
-        check(svdb_qry_run(&qry, self, false, &rc));
+        check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     }
 
     check(svdb_qry_disconnect(&qry, self));
@@ -591,7 +598,7 @@ check_result svdb_contentsbyhash(svdb_db *self, const hash256 *hash,
     check(svdb_qry_bind_uint64(&qry, self, 3, hash->data[2]));
     check(svdb_qry_bind_uint64(&qry, self, 4, hash->data[3]));
     check(svdb_qry_bind_uint64(&qry, self, 5, contentslength));
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     if (rc == SQLITE_ROW)
     {
         uint64_t archiveid = 0;
@@ -631,7 +638,7 @@ check_result svdb_contentsbyid(
     check_b(contentsid, "cannot get row 0");
     memset(row, 0, sizeof(*row));
     check(svdb_qry_bind_uint64(&qry, self, 1, contentsid));
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     if (rc == SQLITE_ROW)
     {
         uint64_t archiveid = 0;
@@ -669,7 +676,7 @@ check_result svdb_contentsinsert(svdb_db *self, uint64_t *outid)
 
     sv_result currenterr = {};
     svdb_qry qry = svdb_qry_open(svdb_qid_contentsinsert, self);
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchanges, NULL));
     *outid = cast64s64u(sqlite3_last_insert_rowid(self->db));
     check_b(*outid != 0, "id should not be 0.");
     check(svdb_qry_disconnect(&qry, self));
@@ -703,7 +710,7 @@ check_result svdb_contentsupdate(svdb_db *db, const sv_content_row *row)
 
     check(svdb_qry_bind_uint64(&qry, db, 9, row->most_recent_collection));
     check(svdb_qry_bind_uint64(&qry, db, 10, row->id));
-    check(svdb_qry_run(&qry, db, true, NULL));
+    check(svdb_qry_run(&qry, db, expectchanges, NULL));
     check(svdb_qry_disconnect(&qry, db));
 
 cleanup:
@@ -730,7 +737,7 @@ check_result svdb_bulk_delete_helper(svdb_db *self, const sv_array *arr,
             if (added_in_batch >= batchsize || i >= arr->length - 1)
             {
                 bcatblk(query, s_and_len("0"));
-                check(svdb_runsql(self, cstr(query), blength(query)));
+                check(svdb_runsql(self, cstr(query), blength(query), expectchangesunknown));
                 bassigncstr(query, qry_start);
                 added_in_batch = 0;
             }
@@ -760,7 +767,7 @@ check_result svdb_contentsiter(
     sv_result currenterr = {};
     int rc = 0;
     svdb_qry qry = svdb_qry_open(svdb_qid_contentsiter, self);
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     while (rc == SQLITE_ROW)
     {
         sv_content_row row = {0};
@@ -782,7 +789,7 @@ check_result svdb_contentsiter(
             check(callback(context, &row));
         }
 
-        check(svdb_qry_run(&qry, self, false, &rc));
+        check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     }
 
     check(svdb_qry_disconnect(&qry, self));
@@ -804,7 +811,7 @@ check_result svdb_filesinsert(svdb_db *self, const bstring path,
     check(svdb_qry_bindstr(&qry, self, 1, cstr(path), blength(path), false));
     check(svdb_qry_bind_uint64(
         &qry, self, 2, sv_makestatus(mostrecentcollection, status)));
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchanges, NULL));
     check(svdb_qry_disconnect(&qry, self));
 
     if (outid)
@@ -845,7 +852,7 @@ check_result svdb_filesupdate(
     }
 
     check(svdb_qry_bind_uint64(&qry, self, 6, row->id));
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchanges, NULL));
     check(svdb_qry_disconnect(&qry, self));
 
 cleanup:
@@ -866,7 +873,7 @@ check_result svdb_files_iter(
     bstring permissions = bstring_open();
     svdb_qry qry = svdb_qry_open(svdb_qid_fileslessthan, self);
     check(svdb_qry_bind_uint64(&qry, self, 1, status));
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     while (rc == SQLITE_ROW)
     {
         sv_file_row row = {0};
@@ -886,7 +893,7 @@ check_result svdb_files_iter(
             check(callback(context, &row, path, permissions));
         }
 
-        check(svdb_qry_run(&qry, self, false, &rc));
+        check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     }
 
     check(svdb_qry_disconnect(&qry, self));
@@ -908,7 +915,7 @@ check_result svdb_collectioninsert(
     *rowid = 0;
     svdb_qry qry = svdb_qry_open(svdb_qid_collectioninsert, self);
     check(svdb_qry_bind_uint64(&qry, self, 1, timestarted));
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchanges, NULL));
     *rowid = cast64s64u(sqlite3_last_insert_rowid(self->db));
     check_b(*rowid != 0, "collectionid should not be 0.");
     check(svdb_qry_disconnect(&qry, self));
@@ -933,7 +940,7 @@ check_result svdb_collectionupdate(svdb_db *self, const sv_collection_row *row)
     check(svdb_qry_bind_uint64(&qry, self, 3, row->count_new_contents));
     check(svdb_qry_bind_uint64(&qry, self, 4, row->count_new_contents_bytes));
     check(svdb_qry_bind_uint64(&qry, self, 5, row->id));
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchanges, NULL));
     check(svdb_qry_disconnect(&qry, self));
 
 cleanup:
@@ -953,7 +960,7 @@ check_result svdb_contents_setlastreferenced(
     check_b(collectionid != 0, "collectionid should not be 0.");
     check(svdb_qry_bind_uint64(&qry, self, 1, collectionid));
     check(svdb_qry_bind_uint64(&qry, self, 2, contentsid));
-    check(svdb_qry_run(&qry, self, true, NULL));
+    check(svdb_qry_run(&qry, self, expectchanges, NULL));
     check(svdb_qry_disconnect(&qry, self));
 
 cleanup:
@@ -973,7 +980,7 @@ check_result svdb_confirmschemaversion(svdb_db *self, const char *path)
     sv_result currenterr = {};
     sv_result err_get_version = svdb_runsql(self,
         s_and_len("SELECT PropertyVal FROM TblProperties WHERE "
-                  "PropertyName='SchemaVersion'"));
+                  "PropertyName='SchemaVersion'"), expectchangesunknown);
 
     if (err_get_version.code)
     {
@@ -1009,9 +1016,9 @@ check_result svdb_connection_openhandle(svdb_db *self)
 
     /* set sqlite options. */
     /* benchmarks showed no improvement under WAL mode */
-    check(svdb_runsql(self, s_and_len("PRAGMA temp_store = memory")));
-    check(svdb_runsql(self, s_and_len("PRAGMA page_size = 16384")));
-    check(svdb_runsql(self, s_and_len("PRAGMA cache_size = 1000")));
+    check(svdb_runsql(self, s_and_len("PRAGMA temp_store = memory"), expectchangesunknown));
+    check(svdb_runsql(self, s_and_len("PRAGMA page_size = 16384"), expectchangesunknown));
+    check(svdb_runsql(self, s_and_len("PRAGMA cache_size = 1000"), expectchangesunknown));
 
 cleanup:
     return currenterr;
@@ -1083,7 +1090,7 @@ check_result svdb_txn_open(svdb_txn *self, svdb_db *db)
 {
     sv_result currenterr = {};
     set_self_zero();
-    check(svdb_runsql(db, s_and_len("BEGIN TRANSACTION")));
+    check(svdb_runsql(db, s_and_len("BEGIN TRANSACTION"), expectchangesunknown));
     self->active = true;
 
 cleanup:
@@ -1094,7 +1101,7 @@ check_result svdb_txn_commit(svdb_txn *self, svdb_db *db)
 {
     sv_result currenterr = {};
     check_b(self->active, "tried to commit an inactive txn");
-    check(svdb_runsql(db, s_and_len("COMMIT TRANSACTION")));
+    check(svdb_runsql(db, s_and_len("COMMIT TRANSACTION"), expectchangesunknown));
     self->active = false;
 
 cleanup:
@@ -1106,7 +1113,7 @@ check_result svdb_txn_rollback(svdb_txn *self, svdb_db *db)
     sv_result currenterr = {};
     if (self->active)
     {
-        check(svdb_runsql(db, s_and_len("ROLLBACK TRANSACTION")));
+        check(svdb_runsql(db, s_and_len("ROLLBACK TRANSACTION"), expectchangesunknown));
     }
 
     self->active = false;
@@ -1134,19 +1141,24 @@ void svdb_txn_close(svdb_txn *self, svdb_db *db)
 check_result svdb_clear_database_content(svdb_db *self)
 {
     sv_result currenterr = {};
-    check(svdb_runsql(self, s_and_len("DELETE FROM TblCollections")));
-    check(svdb_runsql(self, s_and_len("DELETE FROM TblFilesList")));
-    check(svdb_runsql(self, s_and_len("DELETE FROM TblContentsList")));
-    check(svdb_runsql(self, s_and_len("DELETE FROM TblArchives")));
+    check(svdb_runsql(self, s_and_len("DELETE FROM TblCollections"), expectchangesunknown));
+    check(svdb_runsql(self, s_and_len("DELETE FROM TblFilesList"), expectchangesunknown));
+    check(svdb_runsql(self, s_and_len("DELETE FROM TblContentsList"), expectchangesunknown));
+    check(svdb_runsql(self, s_and_len("DELETE FROM TblArchives"), expectchangesunknown));
+    check(svdb_runsql(self, s_and_len("DELETE FROM TblKnownVaults"), expectchangesunknown));
+    check(svdb_runsql(self, s_and_len("DELETE FROM TblKnownVaultArchives"), expectchangesunknown));
     check(svdb_runsql(self,
-        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblCollections'")));
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblCollections'"), expectchangesunknown));
     check(svdb_runsql(self,
-        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblFilesList'")));
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblFilesList'"), expectchangesunknown));
     check(svdb_runsql(self,
-        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblContentsList'")));
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblContentsList'"), expectchangesunknown));
     check(svdb_runsql(self,
-        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblArchives'")));
-
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblArchives'"), expectchangesunknown));
+    check(svdb_runsql(self,
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblKnownVaults'"), expectchangesunknown));
+    check(svdb_runsql(self,
+        s_and_len("DELETE FROM sqlite_sequence WHERE name='TblKnownVaultArchives'"), expectchangesunknown));
 cleanup:
     return currenterr;
 }
@@ -1231,13 +1243,13 @@ check_result svdb_knownvaults_get(
 {
     self->qrystrings[svdb_qid_vault_get] =
         "SELECT KnownVaultsId, AwsRegion, Name, AwsVaultName, AwsVaultARN "
-        "FROM TblKnownVaults WHERE TRUE";
+        "FROM TblKnownVaults WHERE 1";
 
     sv_result currenterr = {};
     int rc = 0;
     bstring tmp = bstring_open();
     svdb_qry qry = svdb_qry_open(svdb_qid_vault_get, self);
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     while (rc == SQLITE_ROW)
     {
         uint64_t id = 0;
@@ -1251,7 +1263,7 @@ check_result svdb_knownvaults_get(
         bstrlist_append(awsnames, tmp);
         svdb_qry_get_str(&qry, self, 5, tmp);
         bstrlist_append(arns, tmp);
-        check(svdb_qry_run(&qry, self, false, &rc));
+        check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     }
 
     check(svdb_qry_disconnect(&qry, self));
@@ -1265,7 +1277,7 @@ check_result svdb_knownvaults_insert(
     svdb_db *self, const char *region, const char *name, const char *awsname, const char *arn)
 {
     self->qrystrings[svdb_qid_vault_insert] =
-        "INSERT INTO TblKnownVaults(Name, AwsRegion, AwsVaultName, AwsVaultARN) VALUES (?, ?, ?, ?, ?)";
+        "INSERT INTO TblKnownVaults(Name, AwsRegion, AwsVaultName, AwsVaultARN) VALUES (?, ?, ?, ?)";
 
     sv_result currenterr = {};
     int rc = 0;
@@ -1274,7 +1286,7 @@ check_result svdb_knownvaults_insert(
     check(svdb_qry_bindstr(&qry, self, 2, region, strlen32s(region), false));
     check(svdb_qry_bindstr(&qry, self, 3, awsname, strlen32s(awsname), false));
     check(svdb_qry_bindstr(&qry, self, 4, arn, strlen32s(arn), false));
-    check(svdb_qry_run(&qry, self, true, &rc));
+    check(svdb_qry_run(&qry, self, expectchanges, &rc));
     check(svdb_qry_disconnect(&qry, self));
 cleanup:
     svdb_qry_close(&qry, self);
@@ -1285,7 +1297,7 @@ check_result svdb_vaultarchives_bypath(
     svdb_db *self, const char *path, uint64_t knownvaultid, uint64_t *outsize, uint64_t *outcrc32, uint64_t *outmodtime)
 {
     self->qrystrings[svdb_qid_vaultarchives_bypath] =
-        "SELECT Size, Crc32, ModifiedTime FROM TblArchives WHERE AwsDescription=? AND KnownVaultsId=?";
+        "SELECT Size, Crc32, ModifiedTime FROM TblKnownVaultArchives WHERE CloudPath=? AND KnownVaultsId=?";
 
     sv_result currenterr = {};
     *outsize = 0;
@@ -1295,7 +1307,7 @@ check_result svdb_vaultarchives_bypath(
     svdb_qry qry = svdb_qry_open(svdb_qid_vaultarchives_bypath, self);
     check(svdb_qry_bindstr(&qry, self, 1, path, strlen32s(path), false));
     check(svdb_qry_bind_uint64(&qry, self, 2, knownvaultid));
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     if (rc == SQLITE_ROW)
     {
         svdb_qry_get_uint64(&qry, self, 1, outsize);
@@ -1313,14 +1325,14 @@ check_result svdb_vaultarchives_delbypath(
     svdb_db *self, const char *path, uint64_t knownvaultid)
 {
     self->qrystrings[svdb_qid_vaultarchives_delbypath] =
-        "DELETE FROM TblArchives WHERE CloudPath=? AND KnownVaultsId=?";
+        "DELETE FROM TblKnownVaultArchives WHERE CloudPath=? AND KnownVaultsId=?";
 
     sv_result currenterr = {};
     int rc = 0;
     svdb_qry qry = svdb_qry_open(svdb_qid_vaultarchives_delbypath, self);
     check(svdb_qry_bindstr(&qry, self, 1, path, strlen32s(path), false));
     check(svdb_qry_bind_uint64(&qry, self, 2, knownvaultid));
-    check(svdb_qry_run(&qry, self, false, &rc));
+    check(svdb_qry_run(&qry, self, expectchangesunknown, &rc));
     check(svdb_qry_disconnect(&qry, self));
 cleanup:
     svdb_qry_close(&qry, self);
@@ -1331,7 +1343,7 @@ check_result svdb_vaultarchives_insert(
     svdb_db *self, const char *path, const char *description, uint64_t knownvaultid, const char *awsid, uint64_t size, uint64_t crc32, uint64_t modtime)
 {
     self->qrystrings[svdb_qid_vaultarchives_insert] =
-        "INSERT INTO TblArchives (KnownVaultsId, AwsArchiveId, CloudPath, AwsDescription, Size, Crc32, ModifiedTime) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        "INSERT INTO TblKnownVaultArchives (KnownVaultsId, AwsArchiveId, CloudPath, AwsDescription, Size, Crc32, ModifiedTime) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
     sv_result currenterr = {};
     int rc = 0;
@@ -1343,7 +1355,7 @@ check_result svdb_vaultarchives_insert(
     check(svdb_qry_bind_uint64(&qry, self, 5, size));
     check(svdb_qry_bind_uint64(&qry, self, 6, crc32));
     check(svdb_qry_bind_uint64(&qry, self, 7, modtime));
-    check(svdb_qry_run(&qry, self, true, &rc));
+    check(svdb_qry_run(&qry, self, expectchanges, &rc));
     check(svdb_qry_disconnect(&qry, self));
 cleanup:
     svdb_qry_close(&qry, self);

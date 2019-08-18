@@ -60,7 +60,7 @@ bool os_setmodifiedtime_nearestsecond(const char *filepath, uint64_t t)
     return ret;
 }
 
-uint64_t os_ostime_to_posixtime(uint64_t t);
+uint64_t os_ostime_to_posixtime(uint64_t t)
 {
     /* it's already in posix time */
     return t;
@@ -1001,7 +1001,7 @@ bool os_setmodifiedtime_nearestsecond(const char *s, uint64_t t)
     return ret;
 }
 
-uint64_t os_ostime_to_posixtime(uint64_t t);
+uint64_t os_ostime_to_posixtime(uint64_t t)
 {
     /* https://gist.github.com/Mostafa-Hamdy-Elgiar/
     9714475f1b3bc224ea063af81566d873 */

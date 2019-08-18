@@ -234,7 +234,7 @@ check_result test_tbl_fileslist(svdb_db *db)
     { /* try to update nonexistant row */
         sv_file_row rowtest = {1234 /* bogus rowid */, 5, 5, 5};
         expect_err_with_message(
-            svdb_filesupdate(db, &rowtest, permissions), "changed no rows");
+            svdb_filesupdate(db, &rowtest, permissions), "changed/didn't change rows");
     }
     { /* query status less than */
         bstrlist *list = bstrlist_open();
@@ -375,7 +375,7 @@ check_result test_tbl_collections(svdb_db *db)
         quiet_warnings(true);
         sv_result res = svdb_collectionupdate(db, &rowtest);
         TestTrue(res.code != 0);
-        TestTrue(s_contains(cstr(res.msg), "changed no rows"));
+        TestTrue(s_contains(cstr(res.msg), "changed/didn't change rows"));
         sv_result_close(&res);
         quiet_warnings(false);
     }
@@ -557,7 +557,7 @@ check_result test_tbl_contents(svdb_db *db)
         sv_result res =
             svdb_contents_setlastreferenced(db, 1234 /*bogus rowid*/, 99);
         TestTrue(res.code != 0);
-        TestTrue(s_contains(cstr(res.msg), "changed no rows"));
+        TestTrue(s_contains(cstr(res.msg), "changed/didn't change rows"));
         sv_result_close(&res);
         quiet_warnings(false);
     }

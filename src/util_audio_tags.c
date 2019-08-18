@@ -207,7 +207,7 @@ sv_hasher sv_hasher_open(const char *loggingcontext)
     /* for benchmarks on my machines, buffer size of 64k is
     slightly faster than 4k and slightly slower than 256k */
     ret.buflen32u = 64 * 1024;
-    check_fatal(ret.buflen32u < SHRT_MAX, "must be smaller than 16bit");
+    check_fatal(ret.buflen32u < (1U << 20), "must be smaller than 20bits");
     check_fatal(ret.buflen32u % 4096 == 0, "must be multiple of 4096.");
     ret.buf = os_aligned_malloc(ret.buflen32u, 4096);
     ret.loggingcontext = loggingcontext;
@@ -387,7 +387,7 @@ check_result sv_basic_crc32_wholefile(
     *crc32 = 0;
     check(sv_file_open(&f, file, "rb"));
 
-    const int CRC_BUFFER_SIZE = 8192;
+    const unsigned int CRC_BUFFER_SIZE = 8192;
     byte *buf = sv_calloc(CRC_BUFFER_SIZE, sizeof(byte));
 
     /* accumulate crc32 from file */

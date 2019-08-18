@@ -79,6 +79,30 @@ SV_BEGIN_TEST_SUITE(tests_path_handling)
         TestEqs("a.txt", cstr(filename));
     }
 
+    SV_TEST_WIN("os_split_dir forward slash 1")
+    {
+        TEST_OPEN2(bstring, dir, filename);
+        os_split_dir("test/one/two", dir, filename);
+        TestEqs("test/one", cstr(dir));
+        TestEqs("two", cstr(filename));
+    }
+
+    SV_TEST_WIN("os_split_dir forward slash 2")
+    {
+        TEST_OPEN2(bstring, dir, filename);
+        os_split_dir("test/one\\two", dir, filename);
+        TestEqs("test/one", cstr(dir));
+        TestEqs("two", cstr(filename));
+    }
+
+    SV_TEST_WIN("os_split_dir forward slash 3")
+    {
+        TEST_OPEN2(bstring, dir, filename);
+        os_split_dir("test\\one/two", dir, filename);
+        TestEqs("test\\one", cstr(dir));
+        TestEqs("two", cstr(filename));
+    }
+
     SV_TEST("find on system path")
     {
         TEST_OPEN(bstring, path);

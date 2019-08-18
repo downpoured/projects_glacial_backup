@@ -829,6 +829,16 @@ bool bstr_equal(const bstring s1, const bstring s2)
         memcmp(cstr(s1), cstr(s2), cast32s32u(s1->slen)) == 0;
 }
 
+bstring tobase64nospace(const char *s) {
+    bstring tmp = bfromcstr(s);
+    bstring ret = bBase64Encode(tmp);
+    bstr_replaceall(ret, " ", "");
+    bstr_replaceall(ret, "\r", "");
+    bstr_replaceall(ret, "\n", "");
+    bdestroy(tmp);
+    return ret;
+}
+
 /* wide strings */
 
 const wchar_t *wcstr_warnnull_cstr(const sv_wstr *s)

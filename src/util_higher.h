@@ -121,6 +121,7 @@ int bstring_calloc(bstring s, int len);
 void bytes_to_string(const void *b, uint32_t len, bstring s);
 int bstr_replaceall(bstring s, const char *find, const char *replacewith);
 bool bstr_equal(const bstring s1, const bstring s2);
+bstring tobase64nospace(const char *s);
 
 typedef struct sv_wstr
 {
