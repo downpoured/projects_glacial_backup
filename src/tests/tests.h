@@ -167,7 +167,8 @@ void run_all_tests(void);
     type varname4 = CONCAT(type, _open)()
 
 /* let tests access this internal function */
-check_result svdb_runsql(svdb_db * self, const char *sql, int lensql, svdb_expectchanges confirm_changes);
+check_result svdb_runsql(svdb_db *self, const char *sql, int lensql,
+    svdb_expectchanges confirm_changes);
 
 typedef struct sv_test_hook
 {

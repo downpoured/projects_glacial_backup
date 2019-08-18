@@ -152,8 +152,7 @@ check_result sv_compact_impl(
 check_result sv_compact_ask_user(const sv_group *grp, sv_compact_state *op);
 void sv_compact_archivestats_to_string(
     const sv_compact_state *op, bool includefiles, bstring s);
-check_result sv_sync_cloud(
-    const sv_app *app, const sv_group *grp, svdb_db *db);
+check_result sv_sync_cloud(const sv_app *app, const sv_group *grp, svdb_db *db);
 
 check_result sv_backup_show_results(sv_backup_state *op);
 check_result sv_backup_show_user(sv_backup_state *op, bool before);

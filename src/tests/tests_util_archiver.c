@@ -631,8 +631,7 @@ SV_BEGIN_TEST_SUITE(tests_xz)
         check(sv_file_writefile(cstr(xz), "", "wb"));
         check(tests_lockfile(true, cstr(xz), &handle));
 
-        expect_err_with_message(
-            ar_util_xz_add(&ar, cstr(path), cstr(xz)), 
+        expect_err_with_message(ar_util_xz_add(&ar, cstr(path), cstr(xz)),
             islinux ? "open(stdout_to_file) failed" : "open() failed");
         check(tests_lockfile(false, cstr(xz), &handle));
     }

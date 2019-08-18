@@ -14,7 +14,6 @@ GNU General Public License for more details.
 
 #include "tests.h"
 
-
 check_result svdb_connection_openhandle(svdb_db *self);
 
 SV_BEGIN_TEST_SUITE(tests_open_db_connection)
@@ -49,7 +48,8 @@ SV_BEGIN_TEST_SUITE(tests_open_db_connection)
         TEST_OPEN_EX(bstring, path,
             bformat("%s%s%s.db", tempdir, pathsep, currentcontext));
         check(svdb_connect(&db, cstr(path)));
-        check(svdb_runsql(&db, s_and_len("DELETE FROM TblProperties"), expectchanges));
+        check(svdb_runsql(
+            &db, s_and_len("DELETE FROM TblProperties"), expectchanges));
         check(svdb_disconnect(&db));
         expect_err_with_message(svdb_connect(&db, cstr(path)), "future version");
         check(svdb_disconnect(&db));

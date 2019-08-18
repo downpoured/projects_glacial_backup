@@ -379,8 +379,7 @@ cleanup:
     return currenterr;
 }
 
-check_result sv_basic_crc32_wholefile(
-    const char *file, uint32_t *crc32)
+check_result sv_basic_crc32_wholefile(const char *file, uint32_t *crc32)
 {
     sv_result currenterr = {};
     sv_file f = {};
@@ -391,9 +390,11 @@ check_result sv_basic_crc32_wholefile(
     byte *buf = sv_calloc(CRC_BUFFER_SIZE, sizeof(byte));
 
     /* accumulate crc32 from file */
-    while (true) {
+    while (true)
+    {
         size_t amtread = fread(buf, sizeof(byte), CRC_BUFFER_SIZE, f.file);
-        if (amtread == 0) {
+        if (amtread == 0)
+        {
             check_b(!ferror(f.file), "error reading file %s", file);
             break;
         }

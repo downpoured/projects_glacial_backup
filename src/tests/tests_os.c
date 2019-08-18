@@ -697,9 +697,7 @@ SV_BEGIN_TEST_SUITE(tests_file_operations)
     {
         TEST_OPEN(bstring, path);
         check(tmpwritetextfile(tempdir, "lmt.txt", path, ""));
-        check_b(
-            os_setmodifiedtime_nearestsecond(cstr(path), 0x5f000000LL),
-            "");
+        check_b(os_setmodifiedtime_nearestsecond(cstr(path), 0x5f000000LL), "");
         long long timegot = (long long)os_getmodifiedtime(cstr(path));
         TestTrue(llabs(timegot - 0x5f000000LL) < 10);
     }
@@ -708,9 +706,7 @@ SV_BEGIN_TEST_SUITE(tests_file_operations)
     {
         TEST_OPEN(bstring, path);
         check(tmpwritetextfile(tempdir, "lmt.txt", path, ""));
-        check_b(
-            os_setmodifiedtime_nearestsecond(cstr(path), 0x5f100000LL),
-            "");
+        check_b(os_setmodifiedtime_nearestsecond(cstr(path), 0x5f100000LL), "");
         long long timegot = (long long)os_getmodifiedtime(cstr(path));
         TestTrue(llabs(timegot - 0x5f100000LL) < 10);
     }
@@ -945,7 +941,8 @@ SV_BEGIN_TEST_SUITE(tests_file_locks)
         check(tmpwritetextfile(tempdir, "a.txt", f, "contents"));
         check(sv_file_open(&filewrapper, cstr(f), "ab"));
         expect_err_with_message(
-            os_lockedfilehandle_open(&handle, cstr(f), true, NULL), "open() failed");
+            os_lockedfilehandle_open(&handle, cstr(f), true, NULL),
+            "open() failed");
         os_lockedfilehandle_close(&handle);
         sv_file_close(&filewrapper);
     }

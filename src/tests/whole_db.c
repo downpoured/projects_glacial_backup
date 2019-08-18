@@ -233,8 +233,8 @@ check_result test_tbl_fileslist(svdb_db *db)
     }
     { /* try to update nonexistant row */
         sv_file_row rowtest = {1234 /* bogus rowid */, 5, 5, 5};
-        expect_err_with_message(
-            svdb_filesupdate(db, &rowtest, permissions), "changed/didn't change rows");
+        expect_err_with_message(svdb_filesupdate(db, &rowtest, permissions),
+            "changed/didn't change rows");
     }
     { /* query status less than */
         bstrlist *list = bstrlist_open();

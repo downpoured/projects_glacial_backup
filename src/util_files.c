@@ -635,8 +635,9 @@ static check_result os_recurse_impl_dir(os_recurse_params *params,
             else
             {
                 os_get_permissions(&st, permissions);
-                check(params->callback(params->context, tmpfullpath, cast64s64u(st.st_mtime),
-                    cast64s64u(st.st_size), permissions));
+                check(params->callback(params->context, tmpfullpath,
+                    cast64s64u(st.st_mtime), cast64s64u(st.st_size),
+                    permissions));
             }
         }
     }

@@ -47,8 +47,7 @@ bool readhash(const char *stdout_from_proc, hash256 *out_hash);
 check_result hash_of_file(os_lockedfilehandle *handle, uint32_t separateaudio,
     efiletype ext, const char *metadatabinary, hash256 *out_hash,
     uint32_t *outcrc32);
-check_result sv_basic_crc32_wholefile(
-    const char *file, uint32_t *crc32);
+check_result sv_basic_crc32_wholefile(const char *file, uint32_t *crc32);
 check_result get_file_checksum_string(const char *filepath, bstring s);
 check_result check_ffmpeg_works(
     ar_util *ar, uint32_t separatemetadata, const char *tmpdir);

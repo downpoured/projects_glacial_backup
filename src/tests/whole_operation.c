@@ -22,8 +22,7 @@ check_result test_operations_restore(
     const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
 check_result test_operations_compact(
     const sv_app *app, sv_group *grp, svdb_db *db, sv_test_hook *hook);
-check_result test_operations_sync_cloud(
-    svdb_db *db, sv_test_hook *hook);
+check_result test_operations_sync_cloud(svdb_db *db, sv_test_hook *hook);
 
 SV_BEGIN_TEST_SUITE(whole_tests_operations)
 {
@@ -534,7 +533,8 @@ check_result test_operations_compact(
     check(sv_verify_archives(app, grp, db, &mismatches));
     check(svdb_runsql(db,
         s_and_len("UPDATE TblContentsList SET "
-                  "CompressedContentLength = ContentLength WHERE 1"), expectchanges));
+                  "CompressedContentLength = ContentLength WHERE 1"),
+        expectchanges));
     TestEqn(0, mismatches);
     os_clr_console();
 

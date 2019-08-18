@@ -17,11 +17,15 @@ GNU General Public License for more details.
 
 #include "user_config.h"
 
-check_result roughselectstrfromjson(const char *json, const char *key, bstring result);
-bstring localpath_to_cloud_path(const char *rootdir, const char *path, const char *group);
+check_result roughselectstrfromjson(
+    const char *json, const char *key, bstring result);
+bstring localpath_to_cloud_path(
+    const char *rootdir, const char *path, const char *group);
 bstring cloud_path_to_description(const char *cloudpath, const char *filename);
 
-check_result sv_sync_marksuccessupload(svdb_db *db, const char *filepath, const char *cloudpath, const char *description, const char *archiveid, uint64_t sz, uint64_t knownvaultid);
+check_result sv_sync_marksuccessupload(svdb_db *db, const char *filepath,
+    const char *cloudpath, const char *description, const char *archiveid,
+    uint64_t sz, uint64_t knownvaultid);
 
 typedef struct sv_sync_finddirtyfiles
 {
@@ -37,7 +41,8 @@ typedef struct sv_sync_finddirtyfiles
     bool verbose;
 } sv_sync_finddirtyfiles;
 
-sv_sync_finddirtyfiles sv_sync_finddirtyfiles_open(const char *rootdir, const char *groupname);
+sv_sync_finddirtyfiles sv_sync_finddirtyfiles_open(
+    const char *rootdir, const char *groupname);
 void sv_sync_finddirtyfiles_close(sv_sync_finddirtyfiles *self);
 check_result sv_sync_finddirtyfiles_find(sv_sync_finddirtyfiles *finder);
 
